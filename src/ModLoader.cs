@@ -86,7 +86,7 @@ namespace SFHR_ZModLoader
                 {
                     foreach (var camoName in Directory.EnumerateDirectories(Path.Combine(ns, "camos")))
                     {
-                        SFHRZModLoaderPlugin.Logger?.LogInfo($"Loaded Mod '{metadata.id}' Camo: {Path.GetFileName(ns)}:{Path.GetFileName(camoName)}");
+                        SFHRZModLoaderPlugin.Logger?.LogInfo($"Loading Camo: {Path.GetFileName(ns)}:{Path.GetFileName(camoName)} from Mod '{metadata.id}'...");
                         mnamespace.camoDatas.Add(Path.GetFileName(camoName), new ModCamoData {
                             texture = File.Exists(Path.Combine(camoName, "texture.png")) 
                                 ? new ModFile { path = Path.Combine(camoName, "texture.png")  }
@@ -139,6 +139,7 @@ namespace SFHR_ZModLoader
                     }
                     else
                     {
+                        Logger?.LogInfo($"Loading new texture: {modFile.path}...");
                         texture = new Texture2D(1, 1);
                     }
                     modFile = new ModFile
@@ -231,14 +232,15 @@ namespace SFHR_ZModLoader
                 {
                     try
                     {
-                        Logger?.LogInfo($"Loading Mod: {Path.GetFileName(modName)}...");
-                        var mod = Mod.LoadModFromDirectory(Path.Combine(modName));
-                        this.mods.Add(Path.GetFileName(modName), mod);
-                        LoadModFilesForMod(Path.GetFileName(modName), forceReload);
+                        Logger?.LogInfo($"Loading Mod from directory: {modName}...");
+                        var mod = Mod.LoadModFromDirectory(modName);
+                        this.mods.Add(mod.metadata.id, mod);
+                        LoadModFilesForMod(mod.metadata.id, forceReload);
+                        Logger?.LogInfo($"Loading Mod '{mod.metadata.id}' completed.");
                     }
                     catch(Exception e)
                     {
-                        Logger?.LogError($"Load mod '{Path.GetFileName(modName)}' failed: {e}.");
+                        Logger?.LogError($"Load Mod in '{modName}' failed: {e}.");
                     }
                 }
             }
@@ -262,27 +264,19 @@ namespace SFHR_ZModLoader
             {
                 if(!mod.Value.namespaces.ContainsKey("sfh"))
                 {
-                    return;
+                    continue;
                 }
                 var ns = mod.Value.namespaces["sfh"];
                 
                 if(!ns.camoDatas.ContainsKey(src.name))
                 {
-                    return;
+                    continue;
                 }
                 var camoData = ns.camoDatas[src.name];
                 if (camoData.texture != null)
                 {
                     var texture = camoData.texture.Value;
                     src.ClassTextureNum = -1;
-                    // if(modFileServer.ContainsKey(texture.path))
-                    // {
-                    //     var texture2D = modFileServer[texture.path].texture2D;
-                    //     if(texture2D != null)
-                    //     {
-                    //         src.Texture = texture2D;
-                    //     }
-                    // }
                     if (texture.texture2D != null)
                     {
                         src.Texture = texture.texture2D;
