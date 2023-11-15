@@ -226,6 +226,9 @@ namespace SFHR_ZModLoader
         public void LoadMods(bool forceReload = false)
         {
             this.mods.Clear();
+            if(!Directory.Exists(Path.Combine(Paths.GameRootPath, "mods"))) {
+                Directory.CreateDirectory(Path.Combine(Paths.GameRootPath, "mods"));
+            }
             foreach (var modName in Directory.EnumerateDirectories(dir))
             {
                 if (File.Exists(Path.Combine(modName, "mod.json")))
