@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using BepInEx;
@@ -22,7 +23,7 @@ namespace SFHR_ZModLoader
 
     public struct ModFile
     {
-        public string? path;
+        public string path;
         public Texture2D? texture2D;
 
         public readonly byte[] ReadAllBytes()
@@ -36,7 +37,7 @@ namespace SFHR_ZModLoader
         }
     }
 
-    public struct ModCamoData
+    public class ModCamoData
     {
         public ModFile? texture;
         public ModFile? redCamo;
@@ -50,7 +51,7 @@ namespace SFHR_ZModLoader
     }
 
     public class Mod {
-        public readonly ModMetadata metadata;
+        public ModMetadata metadata;
         public Dictionary<string, ModNameSpace> namespaces;
         public Mod(ModMetadata metadata)
         {
@@ -120,24 +121,125 @@ namespace SFHR_ZModLoader
     {
         private ManualLogSource? Logger { get; set; } = SFHRZModLoaderPlugin.Logger;
         private readonly string dir;
-        private readonly Dictionary<string, Mod> mods;
+        private Dictionary<string, Mod> mods;
+        private Dictionary<string, ModFile> modFiles;
         // private V8ScriptEngine engine = new();
+
+        private Texture2D LoadModFileTexture2D(string path, bool forceReload = false)
+        {
+            if (modFiles.TryGetValue(path, out ModFile modFile))
+            {
+                if (forceReload)
+                {
+                    Texture2D texture;
+                    if (modFile.texture2D != null && modFile.texture2D.isReadable)
+                    {
+                        Logger?.LogInfo($"Reloading texture: {modFile.path}...");
+                        texture = modFile.texture2D;
+                    }
+                    else
+                    {
+                        texture = new Texture2D(1, 1);
+                    }
+                    modFile = new ModFile
+                    {
+                        path = path,
+                    };
+                    ImageConversion.LoadImage(texture, modFile.ReadAllBytes());
+                    modFile.texture2D = texture;
+                    modFiles[path] = modFile;
+                    return texture;
+                }
+                else if (modFile.texture2D != null)
+                {
+                    return modFile.texture2D;
+                }
+                else
+                {
+                    var texture = new Texture2D(1, 1);
+                    ImageConversion.LoadImage(texture, modFile.ReadAllBytes());
+                    modFile.texture2D = texture;
+                    modFiles[path] = modFile;
+                    return texture;
+                }
+            }
+            else
+            {
+                modFile = new ModFile
+                {
+                    path = path,
+                };
+                var texture = new Texture2D(1, 1);
+                ImageConversion.LoadImage(texture, modFile.ReadAllBytes());
+                modFile.texture2D = texture;
+                modFiles[path] = modFile;
+                return texture;
+            }
+        }
+
+        private void LoadModFilesForMod(string modName, bool forceReload = false)
+        {
+            if (mods.TryGetValue(modName, out var mod))
+            {
+                foreach(var ns in mod.namespaces)
+                {
+                    foreach(var camoData in ns.Value.camoDatas)
+                    {
+                        if(camoData.Value.texture != null)
+                        {
+                            ns.Value.camoDatas[camoData.Key].texture = new ModFile {
+                                path = camoData.Value.texture.Value.path,
+                                texture2D = LoadModFileTexture2D(camoData.Value.texture.Value.path, forceReload)
+                            };
+                        }
+                        if(camoData.Value.icon != null)
+                        {
+                            ns.Value.camoDatas[camoData.Key].icon = new ModFile {
+                                path = camoData.Value.icon.Value.path,
+                                texture2D = LoadModFileTexture2D(camoData.Value.icon.Value.path, forceReload)
+                            };
+                        }
+                        if(camoData.Value.redCamo != null)
+                        {
+                            ns.Value.camoDatas[camoData.Key].redCamo = new ModFile {
+                                path = camoData.Value.redCamo.Value.path,
+                                texture2D = LoadModFileTexture2D(camoData.Value.redCamo.Value.path)
+                            };
+                        }
+                    }
+                }
+            }
+            else
+            {
+                throw new ModLoadingException($"Mod '{modName}' not exists.");
+            }
+        }
 
         public ModLoader(string dir)
         {
             this.dir = dir;
             this.mods = new();
+            this.modFiles = new();
         }
 
-        public void LoadMods()
+        public void LoadMods(bool forceReload = false)
         {
-            mods.Clear();
+            this.mods.Clear();
             foreach (var modName in Directory.EnumerateDirectories(dir))
             {
                 if (File.Exists(Path.Combine(modName, "mod.json")))
                 {
-                    this.mods.Add(Path.GetFileName(modName), Mod.LoadModFromDirectory(Path.Combine(modName)));
-                    SFHRZModLoaderPlugin.Logger?.LogInfo($"Loaded Mod: {Path.GetFileName(modName)}");
+                    try
+                    {
+                        Logger?.LogInfo($"Loading Mod: {Path.GetFileName(modName)}...");
+                        var mod = Mod.LoadModFromDirectory(Path.Combine(modName));
+                        this.mods.Add(Path.GetFileName(modName), mod);
+                        LoadModFilesForMod(Path.GetFileName(modName), forceReload);
+                    }
+                    catch(Exception e)
+                    {
+                        Logger?.LogError($"Load mod '{Path.GetFileName(modName)}' failed: {e}.");
+                    }
                 }
             }
         }
@@ -171,51 +273,84 @@ namespace SFHR_ZModLoader
                 var camoData = ns.camoDatas[src.name];
                 if (camoData.texture != null)
                 {
+                    var texture = camoData.texture.Value;
                     src.ClassTextureNum = -1;
-                    if (camoData.texture?.texture2D != null)
+                    // if(modFileServer.ContainsKey(texture.path))
+                    // {
+                    //     var texture2D = modFileServer[texture.path].texture2D;
+                    //     if(texture2D != null)
+                    //     {
+                    //         src.Texture = texture2D;
+                    //     }
+                    // }
+                    if (texture.texture2D != null)
                     {
-                        src.Texture = camoData.texture.Value.texture2D;
+                        src.Texture = texture.texture2D;
                     }
                     else
                     {
-                        src.Texture = new Texture2D(src.Texture.width, src.Texture.height);
-                        ImageConversion.LoadImage(src.Texture, camoData.texture?.ReadAllBytes());
+                        try
+                        {
+                            Logger?.LogInfo($"Loading image '{texture.path}'...");
+                            src.Texture = new Texture2D(1, 1);
+                            ImageConversion.LoadImage(src.Texture, texture.ReadAllBytes());
+                        } 
+                        catch(Exception e)
+                        {
+                            Logger?.LogError($"Load image '{texture.path}' failed: {e}.");
+                        }
                         camoData.texture = new ModFile{
-                            path = camoData.texture?.path,
+                            path = texture.path,
                             texture2D = src.Texture
                         };
                     }
-                    
-                    SFHRZModLoaderPlugin.Logger?.LogError("Patch completed.");
                 }
                 if (camoData.redCamo != null)
                 {
-                    if (camoData.redCamo?.texture2D != null)
+                    var redCamo = camoData.redCamo.Value;
+                    if (redCamo.texture2D != null)
                     {
                         src.RedCamo = camoData.redCamo.Value.texture2D;
                     }
                     else
                     {
-                        src.RedCamo = new Texture2D(src.RedCamo.width, src.RedCamo.height);
-                        ImageConversion.LoadImage(src.Texture, camoData.redCamo?.ReadAllBytes());
+                        try
+                        {
+                            Logger?.LogInfo($"Loading image '{redCamo.path}'...");
+                            src.RedCamo = new Texture2D(1, 1);
+                            ImageConversion.LoadImage(src.RedCamo, redCamo.ReadAllBytes());
+                        }
+                        catch(Exception e)
+                        {
+                            Logger?.LogError($"Load image '{redCamo.path}' failed: {e}.");
+                        }
                         camoData.redCamo = new ModFile{
-                            path = camoData.redCamo?.path,
+                            path = redCamo.path,
                             texture2D = src.RedCamo
                         };
                     }
                 }
                 if (camoData.icon != null)
                 {
-                    if (camoData.icon?.texture2D != null)
+                    var icon = camoData.icon.Value;
+                    if (icon.texture2D != null)
                     {
-                        src.Icon = camoData.icon.Value.texture2D;
+                        src.Icon = icon.texture2D;
                     }
                     else
                     {
-                        src.Icon = new Texture2D(src.Icon.width, src.Icon.height);
-                        ImageConversion.LoadImage(src.Texture, camoData.icon?.ReadAllBytes());
+                        try
+                        {
+                            Logger?.LogInfo($"Loading image '{icon.path}'...");
+                            src.Icon = new Texture2D(1, 1);
+                            ImageConversion.LoadImage(src.Icon, icon.ReadAllBytes());
+                        }
+                        catch(Exception e)
+                        {
+                            Logger?.LogError($"Load image '{icon.path}' failed: {e}.");
+                        }
                         camoData.icon = new ModFile{
-                            path = camoData.icon?.path,
+                            path = icon.path,
                             texture2D = src.Icon
                         };
                     }

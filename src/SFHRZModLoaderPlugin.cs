@@ -50,6 +50,7 @@ namespace SFHR_ZModLoader
             // SaveMgr = new SaveManager(Path.Combine(Paths.GameRootPath, "saves"));
             ModLoader = new ModLoader(Path.Combine(Paths.GameRootPath, "mods"));
             ModLoader.LoadMods();
+            InputMonitor.RegisterAction(KeyCode.P, () => ModLoader.LoadMods(true));
 
             Harmony.CreateAndPatchAll(typeof(Hooks));
         }
