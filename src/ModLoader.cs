@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using BepInEx;
+using BepInEx.Logging;
 using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.UIElements.Collections;
@@ -116,6 +118,7 @@ namespace SFHR_ZModLoader
 
     public class ModLoader
     {
+        private ManualLogSource? Logger { get; set; } = SFHRZModLoaderPlugin.Logger;
         private readonly string dir;
         private readonly Dictionary<string, Mod> mods;
         // private V8ScriptEngine engine = new();
@@ -128,6 +131,7 @@ namespace SFHR_ZModLoader
 
         public void LoadMods()
         {
+            mods.Clear();
             foreach (var modName in Directory.EnumerateDirectories(dir))
             {
                 if (File.Exists(Path.Combine(modName, "mod.json")))
@@ -216,6 +220,42 @@ namespace SFHR_ZModLoader
                         };
                     }
                 }
+            }
+        }
+
+        public void PatchGlobalDataLoad(GlobalData globalData)
+        {
+            if(!globalData.ItemTypeInfo.ContainsKey(GI.EItemType.Camo)) {
+                return;
+            }
+            var objects = globalData.ItemTypeInfo[GI.EItemType.Camo].Objects;
+            foreach (var obj in objects)
+            {
+                CamoData camoData = (CamoData)obj;
+                if (!(camoData.name == ""))
+                {
+                    PatchCamoData(ref camoData);
+                }
+            }
+
+            if (SFHRZModLoaderPlugin.DebugEmit)
+            {
+                if (!Directory.Exists(Path.Combine(Paths.GameRootPath, "DebugEmit/camos"))) {
+                    Directory.CreateDirectory(Path.Combine(Paths.GameRootPath, "DebugEmit/camos"));
+                }
+                string text = "";
+                foreach (var obj in objects)
+                {
+                    CamoData camoData = (CamoData)obj;
+                    if (!(camoData.Name == ""))
+                    {
+                        text = string.Concat(new string[] { text, "CamoName.", camoData.name, "|", camoData.Name, "\n" });
+                        text = string.Concat(new string[] { text, "CamoDesc.", camoData.name, "|", camoData.Desc, "\n" });
+                        text += $"CamoTextureName.{camoData.Texture.name}\n";
+                        text += $"CamoRedCamoName.{camoData.RedCamo.name}\n";
+                    }
+                }
+                File.WriteAllText(Path.Combine(Paths.GameRootPath, "DebugEmit/camos.txt"), text);
             }
         }
     }

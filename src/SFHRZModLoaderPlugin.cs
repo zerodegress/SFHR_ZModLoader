@@ -13,10 +13,12 @@ namespace SFHR_ZModLoader
     {
         internal const string ZERO_COMPONENTS_NAME = "ZeroComponentsv1";
         internal static GameObject? ZeroComponents { get; set; }
+        public static InputMonitor? InputMonitor { get; set; }
         internal static new ManualLogSource? Logger { get; set; }
         //public static GameContext? Context { get; set; }
-        public static SaveManager? SaveMgr { get; set; }
-        public static ModLoader? ModLdr { get; set; }
+        public static SaveManager? SaveManager { get; set; }
+        public static ModLoader? ModLoader { get; set; }
+        public static GameContext? GameContext { get; set; }
         public static bool DebugEmit { get; set; } = false;
 
         private void Awake()
@@ -39,10 +41,15 @@ namespace SFHR_ZModLoader
                 GameObject.DontDestroyOnLoad(ZeroComponents);
                 ZeroComponents.hideFlags = HideFlags.HideAndDontSave;
             }
+            InputMonitor = ZeroComponents.GetComponent<InputMonitor>();
+            if(InputMonitor == null)
+            {
+                InputMonitor = ZeroComponents.AddComponent<InputMonitor>();
+            }
 
             // SaveMgr = new SaveManager(Path.Combine(Paths.GameRootPath, "saves"));
-            ModLdr = new ModLoader(Path.Combine(Paths.GameRootPath, "mods"));
-            ModLdr.LoadMods();
+            ModLoader = new ModLoader(Path.Combine(Paths.GameRootPath, "mods"));
+            ModLoader.LoadMods();
 
             Harmony.CreateAndPatchAll(typeof(Hooks));
         }

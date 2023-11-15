@@ -2,7 +2,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using BepInEx.Logging;
+using HarmonyLib;
 using Newtonsoft.Json;
+using UnityEngine.InputSystem;
 
 namespace SFHR_ZModLoader
 {
@@ -32,6 +35,7 @@ namespace SFHR_ZModLoader
 
     public class SaveManager
     {
+        private ManualLogSource? Logger { get; set; } = SFHRZModLoaderPlugin.Logger;
         readonly string dir;
 
         public SaveManager(string dir)
@@ -107,6 +111,134 @@ namespace SFHR_ZModLoader
             settings.Controls = controls;
             SaveSettingsToSettingsFile(settings);
             return true;
+        }
+
+        public void PatchSDLoad(SD instance)
+        {
+            var save = LoadFromSaveFile();
+            instance.Money = save.Money;
+            Traverse.Create(instance).Field<uint>("CurItemID").Value = save.CurItemID;
+            instance.Missions = save.Missions;
+            instance.CurClass = save.CurClass;
+            instance.Misc = save.Misc;
+            instance.Classes.Clear();
+            foreach (var keyValuePair in save.Classes) 
+            {
+                instance.Classes.Add(keyValuePair.Key, keyValuePair.Value.ToDataInfo(keyValuePair.Key));
+            }
+		    instance.Items.Clear();
+		    foreach (var keyValuePair in save.Items)
+		    {
+			    instance.Items.Add(keyValuePair.Key, keyValuePair.Value.ToDataInfo());
+		    }
+		    instance.ShopItems.Clear();
+            foreach (var item in save.ShopItems)
+            {
+                instance.ShopItems.Add(item.ToDataInfo());
+            }
+            instance.ItemRewards.Clear();
+            foreach (var item in save.ItemRewards)
+            {
+                instance.ItemRewards.Add(item.ToDataInfo());
+            }
+            instance.ClassCamos = save.ClassCamos;
+            instance.Feats = save.Feats;
+            foreach (var keyValuePair in instance.Items)
+            {
+                if (keyValuePair.Value.Level >= GI.VarsData.MaxLevel)
+                {
+                    var sitemInfo = keyValuePair.Value;
+                    sitemInfo.Level = GI.VarsData.MaxLevel;
+                    instance.Items[keyValuePair.Key] = sitemInfo;
+                }
+            }
+            foreach (var keyValuePair in instance.Classes)
+            {
+                if(keyValuePair.Value.Level >= GI.VarsData.MaxLevel) 
+                {
+                    GI.SUnitInfo sunitInfo = keyValuePair.Value;
+                    sunitInfo.Level = GI.VarsData.MaxLevel;
+                    sunitInfo.Exp = 0f;
+                    instance.Classes[keyValuePair.Key] = sunitInfo;
+                }
+            }
+            foreach (var keyValuePair in instance.Items)
+            {
+                if (keyValuePair.Value.Level > GI.VarsData.MaxLevel)
+                {
+                    SItemInfo sitemInfo2 = keyValuePair.Value;
+                    sitemInfo2.Level = GI.VarsData.MaxLevel;
+                    instance.Items[keyValuePair.Key] = sitemInfo2;
+                }
+            }
+            if (ExistsSettingsFile())
+            {
+                Dictionary<string, int> dictionary3;
+                dictionary3 = LoadSettingsFromSettingFile().settings;
+                foreach (var keyValuePair4 in instance.Settings)
+                {
+                    if (!dictionary3.ContainsKey(keyValuePair4.Key))
+                    {
+                        dictionary3.Add(keyValuePair4.Key, keyValuePair4.Value);
+                    }
+                }
+                instance.Settings = dictionary3;
+                try
+                {
+                    string text3 = LoadSettingsFromSettingFile().Controls;
+                    UnityEngine.Object.FindObjectOfType<PlayerInput>(true).actions.LoadBindingOverridesFromJson(text3, true);
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        public void PatchSDSave(SD instance)
+        {
+            var save = new Save
+            {
+                Version = UT.GetVersionNum(),
+                Money = instance.Money,
+                SortOrder = instance.SortOrder,
+                CurItemID = Traverse.Create(instance).Field<uint>("CurItemID").Value,
+                Missions = instance.Missions,
+                CurClass = instance.CurClass
+            };
+            var dictionary = new Dictionary<string, GI.SSaveUnitInfo>();
+            foreach (var keyValuePair in instance.Classes)
+            {
+                dictionary.Add(keyValuePair.Key, keyValuePair.Value.ToSaveInfo());
+            }
+            save.Classes = dictionary;
+            var dictionary2 = new Dictionary<uint, SSaveItemInfo>();
+            foreach (var keyValuePair2 in instance.Items)
+            {
+                dictionary2.Add(keyValuePair2.Key, keyValuePair2.Value.ToSaveInfo());
+            }
+            var list = new List<SSaveItemInfo>();
+            for (int i = 0; i < instance.ShopItems.Count; i++)
+            {
+                list.Add(instance.ShopItems[i].ToSaveInfo());
+            }
+            List<SSaveItemInfo> list2 = new List<SSaveItemInfo>();
+            for (int j = 0; j < instance.ItemRewards.Count; j++)
+            {
+                list2.Add(instance.ItemRewards[j].ToSaveInfo());
+            }
+            save.Items = dictionary2;
+            save.ShopItems = list;
+            save.ItemRewards = list2;
+            save.ClassCamos = instance.ClassCamos;
+            save.Feats = instance.Feats;
+            UT.AddUnique<string, int>(instance.Misc, "firstSave", 1);
+            save.Misc = instance.Misc;
+            SaveToSaveFile(save);
+
+            var settings = new Settings {};
+            settings.settings = instance.Settings;
+            SaveSettingsToSettingsFile(settings);
+            SaveControlsToSettingsFile(UnityEngine.Object.FindObjectOfType<PlayerInput>(true).actions.SaveBindingOverridesAsJson());
         }
     }
 }
