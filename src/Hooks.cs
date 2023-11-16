@@ -38,25 +38,25 @@ namespace SFHR_ZModLoader
             }
         }
 
-        [HarmonyPrefix, HarmonyPatch(typeof(SD), nameof(SD.Save))]
-        public static bool Prefix_SD_Save(SD __instance) {
-            if (SFHRZModLoaderPlugin.SaveManager == null) {
-                return true;
-            }
-            var saveManager = SFHRZModLoaderPlugin.SaveManager;
-            saveManager.PatchSDSave(__instance);
-            return false;
-        }
+        // [HarmonyPrefix, HarmonyPatch(typeof(SD), nameof(SD.Save))]
+        // public static bool Prefix_SD_Save(SD __instance) {
+        //     if (SFHRZModLoaderPlugin.SaveManager == null) {
+        //         return true;
+        //     }
+        //     var saveManager = SFHRZModLoaderPlugin.SaveManager;
+        //     saveManager.PatchSDSave(__instance);
+        //     return false;
+        // }
 
-        [HarmonyPrefix, HarmonyPatch(typeof(SD), nameof(SD.SaveControls))]
-        public static bool Prefix_SD_SaveControls(SD __instance)
-        {
-            if (SFHRZModLoaderPlugin.SaveManager == null) {
-                return true;
-            }
-            SFHRZModLoaderPlugin.SaveManager.SaveControlsToSettingsFile(UnityEngine.Object.FindObjectOfType<PlayerInput>(true).actions.SaveBindingOverridesAsJson());
-            return false;
-        }
+        // [HarmonyPrefix, HarmonyPatch(typeof(SD), nameof(SD.SaveControls))]
+        // public static bool Prefix_SD_SaveControls(SD __instance)
+        // {
+        //     if (SFHRZModLoaderPlugin.SaveManager == null) {
+        //         return true;
+        //     }
+        //     SFHRZModLoaderPlugin.SaveManager.SaveControlsToSettingsFile(UnityEngine.Object.FindObjectOfType<PlayerInput>(true).actions.SaveBindingOverridesAsJson());
+        //     return false;
+        // }
 
         [HarmonyPostfix, HarmonyPatch(typeof(GlobalData), nameof(GlobalData.Load))]
         public static void Postfix_GlobalData_Load() 
