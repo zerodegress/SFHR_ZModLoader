@@ -19,6 +19,7 @@ namespace SFHR_ZModLoader
         public static SaveManager? SaveManager { get; set; }
         public static ModLoader? ModLoader { get; set; }
         public static GameContext? GameContext { get; set; }
+        public static EventManager? EventManager { get; set; }
         public static bool DebugEmit { get; set; } = false;
 
         private void Awake()
@@ -34,6 +35,8 @@ namespace SFHR_ZModLoader
                 }
             }
 
+
+            EventManager = new(Logger);
             ZeroComponents = GameObject.Find(ZERO_COMPONENTS_NAME);
             if(ZeroComponents == null) 
             {
@@ -48,9 +51,20 @@ namespace SFHR_ZModLoader
             }
 
             // SaveMgr = new SaveManager(Path.Combine(Paths.GameRootPath, "saves"));
-            ModLoader = new ModLoader(Path.Combine(Paths.GameRootPath, "mods"));
-            ModLoader.LoadMods();
-            InputMonitor.RegisterAction(KeyCode.P, () => ModLoader.LoadMods(true));
+            ModLoader = new ModLoader(Path.Combine(Paths.GameRootPath, "mods"), Logger, EventManager);
+            EventManager.EmitEvent(new Event {
+                type = "MODS_LOAD"
+            });
+            InputMonitor.SetAction(KeyCode.P, () => {
+                if(GameContext == null)
+                {
+                    return;
+                }
+                EventManager.EmitEvent(new Event {
+                    type = "GAMECONTEXT_PATCH",
+                    data = GameContext,
+                });
+            });
 
             Harmony.CreateAndPatchAll(typeof(Hooks));
         }

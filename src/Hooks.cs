@@ -15,48 +15,26 @@ namespace SFHR_ZModLoader
     {
         private static GlobalData? globalData;
         private static SD? saveData;
-
         private static ManualLogSource? Logger { get => SFHRZModLoaderPlugin.Logger; }
-
-        [HarmonyPrefix, HarmonyPatch(typeof(SD), nameof(SD.Load))]
-        public static bool Prefix_SD_Load(SD __instance) {
-            if (SFHRZModLoaderPlugin.SaveManager == null) {
-                return true;
-            }
-            var saveManager = SFHRZModLoaderPlugin.SaveManager;
-            saveManager.PatchSDLoad(__instance);
-            return false;
-        }
+        private static EventManager? EventManager { get => SFHRZModLoaderPlugin.EventManager; }
 
         [HarmonyPostfix, HarmonyPatch(typeof(SD), nameof(SD.Load))]
         public static void Postfix_SD_Load(SD __instance)
         {
             saveData = __instance;
-            if(globalData != null && saveData != null)
+            EventManager?.EmitEvent(new Event {
+                type = "SD_LOADED",
+                data = __instance
+            });
+            if(globalData != null && Logger != null)
             {
-                SFHRZModLoaderPlugin.GameContext = new(globalData, saveData);
+                SFHRZModLoaderPlugin.GameContext = new(globalData, saveData, Logger);
+                EventManager?.EmitEvent(new Event {
+                    type = "GAMECONTEXT_LOADED",
+                    data = SFHRZModLoaderPlugin.GameContext,
+                });
             }
         }
-
-        // [HarmonyPrefix, HarmonyPatch(typeof(SD), nameof(SD.Save))]
-        // public static bool Prefix_SD_Save(SD __instance) {
-        //     if (SFHRZModLoaderPlugin.SaveManager == null) {
-        //         return true;
-        //     }
-        //     var saveManager = SFHRZModLoaderPlugin.SaveManager;
-        //     saveManager.PatchSDSave(__instance);
-        //     return false;
-        // }
-
-        // [HarmonyPrefix, HarmonyPatch(typeof(SD), nameof(SD.SaveControls))]
-        // public static bool Prefix_SD_SaveControls(SD __instance)
-        // {
-        //     if (SFHRZModLoaderPlugin.SaveManager == null) {
-        //         return true;
-        //     }
-        //     SFHRZModLoaderPlugin.SaveManager.SaveControlsToSettingsFile(UnityEngine.Object.FindObjectOfType<PlayerInput>(true).actions.SaveBindingOverridesAsJson());
-        //     return false;
-        // }
 
         [HarmonyPostfix, HarmonyPatch(typeof(GlobalData), nameof(GlobalData.Load))]
         public static void Postfix_GlobalData_Load() 
@@ -66,11 +44,18 @@ namespace SFHR_ZModLoader
                 return;
             }
             globalData = GI.GlobalData;
-            if(saveData != null)
+            EventManager?.EmitEvent(new Event {
+                type = "GLOBALDATA_LOADED",
+                data = globalData,
+            });
+            if(saveData != null && Logger != null)
             {
-                SFHRZModLoaderPlugin.GameContext = new(globalData, saveData);
+                SFHRZModLoaderPlugin.GameContext = new(globalData, saveData, Logger);
+                EventManager?.EmitEvent(new Event {
+                    type = "GAMECONTEXT_LOADED",
+                    data = SFHRZModLoaderPlugin.GameContext,
+                });
             }
-            SFHRZModLoaderPlugin.ModLoader?.PatchGlobalDataLoad(globalData);
         }
     }
 }

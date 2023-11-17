@@ -28,7 +28,7 @@ namespace SFHR_ZModLoader
             }
         }
 
-        public void RegisterAction(KeyCode keyCode, Action action)
+        public void SetAction(KeyCode keyCode, Action action)
         {
             KeyboradListeners.Add(keyCode, action);
         }

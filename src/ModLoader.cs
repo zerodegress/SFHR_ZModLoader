@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using BepInEx;
 using BepInEx.Logging;
 using Newtonsoft.Json;
@@ -21,52 +22,80 @@ namespace SFHR_ZModLoader
         public string version;
     }
 
-    public struct ModFile
-    {
-        public string path;
-        public Texture2D? texture2D;
-
-        public readonly byte[] ReadAllBytes()
-        {
-            return File.ReadAllBytes(path);
-        }
-
-        public readonly string ReadAllText()
-        {
-            return File.ReadAllText(path);
-        }
-    }
-
-    public class ModCamoData
-    {
-        public ModFile? texture;
-        public ModFile? redCamo;
-        public ModFile? icon;
-    }
-
-    public struct ModNameSpace 
+    public struct ModNamespace 
     {
         public string name;
         public Dictionary<string, ModCamoData> camoDatas;
+
+        public static ModNamespace LoadFromDirectory(string dir, ModNamespace? ns = null)
+        {
+            if(!Directory.Exists(dir))
+            {
+                throw new ModLoadingException($"Namespace directory '{dir}' not exists.");
+            }
+            var nsname = Path.GetFileName(dir);
+            var camoDatas = new Dictionary<string, ModCamoData>();
+            var nsConf = new ModNamespaceConf {
+                camos = "camos"
+            };
+            if(File.Exists(Path.Combine(dir, "namespace.json")))
+            {
+                var newConf = JsonConvert.DeserializeObject<ModNamespaceConf>(File.ReadAllText(Path.Combine(dir, "namespace.json")));
+                nsConf = new ModNamespaceConf {
+                    camos = newConf.camos ?? nsConf.camos,
+                };
+            }
+            var camosConf = new ModCamosConf {};
+            if(File.Exists(Path.Combine(dir, nsConf.camos, "camos.json")))
+            {
+                var newConf = JsonConvert.DeserializeObject<ModCamosConf>(File.ReadAllText(Path.Combine(dir, nsConf.camos, "camos.json")));
+                camosConf = newConf;
+            }
+            foreach (var item in Directory.EnumerateDirectories(Path.Combine(dir, nsConf.camos)))
+            {
+                // TODO: includes 和 excludes处理
+                var camoName = Path.GetFileName(item);
+                if (ns?.camoDatas.TryGetValue(item, out var camoData) ?? false)
+                {
+                    camoDatas.Add(camoName, ModCamoData.LoadFromDirectory(camoName, item, camoData));
+                }
+                else
+                {
+                    camoDatas.Add(camoName, ModCamoData.LoadFromDirectory(camoName, item));
+                }
+            }
+            return new ModNamespace {
+                name = nsname,
+                camoDatas = camoDatas,
+            };
+        }
+
+        public readonly void PatchToGameContext(GameContext gctx)
+        {
+            foreach (var item in camoDatas)
+            {
+                item.Value.PatchToGameContext(gctx);
+            }
+        }
     }
 
-    public class Mod {
+    public struct Mod {
         public ModMetadata metadata;
-        public Dictionary<string, ModNameSpace> namespaces;
+        public Dictionary<string, ModNamespace> namespaces;
         public Mod(ModMetadata metadata)
         {
             this.metadata = metadata;
             this.namespaces = new();
         }
 
-        public static Mod LoadModFromDirectory(string dir)
+        public static Mod LoadFromDirectory(string dir, Mod? mod = null)
         {
             if(!Directory.Exists(dir))
             {
                 throw new ModLoadingException($"Mod directory '{dir}' not found.");
             }
             ModMetadata metadata;
-            try 
+            try
             {
                 metadata = JsonConvert.DeserializeObject<ModMetadata>(File.ReadAllText(Path.Combine(dir, "mod.json")));
             }
@@ -74,40 +103,31 @@ namespace SFHR_ZModLoader
             {
                 throw new ModLoadingException($"Errors in the metadata file 'mod.json'.");
             }
-            var mod = new Mod(metadata);
+            var namespaces = mod?.namespaces ?? new Dictionary<string, ModNamespace>();
 
-            foreach (var ns in Directory.EnumerateDirectories(dir))
+            foreach (var nsdir in Directory.EnumerateDirectories(dir))
             {
-                var mnamespace = new ModNameSpace {
-                    name = Path.GetFileName(ns),
-                    camoDatas = new(),
-                };
-                if(Directory.Exists(Path.Combine(ns, "camos")))
+                if(namespaces.TryGetValue(Path.GetFileName(nsdir), out var ns))
                 {
-                    foreach (var camoName in Directory.EnumerateDirectories(Path.Combine(ns, "camos")))
-                    {
-                        SFHRZModLoaderPlugin.Logger?.LogInfo($"Loading Camo: {Path.GetFileName(ns)}:{Path.GetFileName(camoName)} from Mod '{metadata.id}'...");
-                        mnamespace.camoDatas.Add(Path.GetFileName(camoName), new ModCamoData {
-                            texture = File.Exists(Path.Combine(camoName, "texture.png")) 
-                                ? new ModFile { path = Path.Combine(camoName, "texture.png")  }
-                                : null,
-                            redCamo = File.Exists(Path.Combine(camoName, "red_camo.png")) 
-                                ? new ModFile { path = Path.Combine(camoName, "red_camo.png")  }
-                                : null,
-                            icon = File.Exists(Path.Combine(camoName, "icon.png")) 
-                                ? new ModFile { path = Path.Combine(camoName, "icon.png")  }
-                                : null,
-                        });
-                    }
+                    namespaces.Add(Path.GetFileName(nsdir), ModNamespace.LoadFromDirectory(nsdir, ns));
                 }
-                mod.AddNameSpace(mnamespace);
+                else
+                {
+                    namespaces.Add(Path.GetFileName(nsdir), ModNamespace.LoadFromDirectory(nsdir));
+                }
             }
-            return mod;
+            return new Mod {
+                metadata = metadata,
+                namespaces = namespaces,
+            };
         }
 
-        public void AddNameSpace(ModNameSpace ns)
+        public readonly void PatchToGameContext(GameContext gctx)
         {
-            this.namespaces.Add(ns.name, ns);
+            foreach (var item in namespaces)
+            {
+                item.Value.PatchToGameContext(gctx);
+            }
         }
     }
 
@@ -119,131 +139,70 @@ namespace SFHR_ZModLoader
 
     public class ModLoader
     {
-        private ManualLogSource? Logger { get; set; } = SFHRZModLoaderPlugin.Logger;
         private readonly string dir;
         private Dictionary<string, Mod> mods;
-        private Dictionary<string, ModFile> modFiles;
-        // private V8ScriptEngine engine = new();
+        private readonly ManualLogSource logger; 
+        private readonly EventManager eventManager;
 
-        private Texture2D LoadModFileTexture2D(string path, bool forceReload = false)
-        {
-            if (modFiles.TryGetValue(path, out ModFile modFile))
-            {
-                if (forceReload)
-                {
-                    Texture2D texture;
-                    if (modFile.texture2D != null && modFile.texture2D.isReadable)
-                    {
-                        Logger?.LogInfo($"Reloading texture: {modFile.path}...");
-                        texture = modFile.texture2D;
-                    }
-                    else
-                    {
-                        Logger?.LogInfo($"Loading new texture: {modFile.path}...");
-                        texture = new Texture2D(1, 1);
-                    }
-                    modFile = new ModFile
-                    {
-                        path = path,
-                    };
-                    ImageConversion.LoadImage(texture, modFile.ReadAllBytes());
-                    modFile.texture2D = texture;
-                    modFiles[path] = modFile;
-                    return texture;
-                }
-                else if (modFile.texture2D != null)
-                {
-                    return modFile.texture2D;
-                }
-                else
-                {
-                    var texture = new Texture2D(1, 1);
-                    ImageConversion.LoadImage(texture, modFile.ReadAllBytes());
-                    modFile.texture2D = texture;
-                    modFiles[path] = modFile;
-                    return texture;
-                }
-            }
-            else
-            {
-                modFile = new ModFile
-                {
-                    path = path,
-                };
-                var texture = new Texture2D(1, 1);
-                ImageConversion.LoadImage(texture, modFile.ReadAllBytes());
-                modFile.texture2D = texture;
-                modFiles[path] = modFile;
-                return texture;
-            }
-        }
-
-        private void LoadModFilesForMod(string modName, bool forceReload = false)
-        {
-            if (mods.TryGetValue(modName, out var mod))
-            {
-                foreach(var ns in mod.namespaces)
-                {
-                    foreach(var camoData in ns.Value.camoDatas)
-                    {
-                        if(camoData.Value.texture != null)
-                        {
-                            ns.Value.camoDatas[camoData.Key].texture = new ModFile {
-                                path = camoData.Value.texture.Value.path,
-                                texture2D = LoadModFileTexture2D(camoData.Value.texture.Value.path, forceReload)
-                            };
-                        }
-                        if(camoData.Value.icon != null)
-                        {
-                            ns.Value.camoDatas[camoData.Key].icon = new ModFile {
-                                path = camoData.Value.icon.Value.path,
-                                texture2D = LoadModFileTexture2D(camoData.Value.icon.Value.path, forceReload)
-                            };
-                        }
-                        if(camoData.Value.redCamo != null)
-                        {
-                            ns.Value.camoDatas[camoData.Key].redCamo = new ModFile {
-                                path = camoData.Value.redCamo.Value.path,
-                                texture2D = LoadModFileTexture2D(camoData.Value.redCamo.Value.path)
-                            };
-                        }
-                    }
-                }
-            }
-            else
-            {
-                throw new ModLoadingException($"Mod '{modName}' not exists.");
-            }
-        }
-
-        public ModLoader(string dir)
+        public ModLoader(string dir, ManualLogSource logger, EventManager eventManager)
         {
             this.dir = dir;
             this.mods = new();
-            this.modFiles = new();
+            this.logger = logger;
+            this.eventManager = eventManager;
+            this.logger.LogInfo("ModLoader created.");
+            this.eventManager.RegisterEventHandler("MODS_LOAD", ev => {
+                LoadMods();
+                eventManager.EmitEvent(new Event {
+                    type = "MODS_LOADED",
+                });
+            });
+            this.eventManager.RegisterEventHandler("GAMECONTEXT_PATCH", ev => {
+                if(ev.data == null || ev.data.GetType() != typeof(GameContext))
+                {
+                    logger.LogError("GAMECONTEXT_PATCH data incorrect!");
+                    return;
+                }
+                var gctx = (GameContext)ev.data;
+                logger.LogInfo("Game patching...");
+                PatchToGameContext(gctx);
+                logger.LogInfo("Game patch completed.");
+            });
+            this.eventManager.RegisterEventHandler("GAMECONTEXT_LOADED", ev => {
+                var gctx = (GameContext)ev.data;
+                this.eventManager.EmitEvent(new Event {
+                    type = "GAMECONTEXT_PATCH", 
+                    data = gctx,
+                });
+            });
         }
 
-        public void LoadMods(bool forceReload = false)
+        public void LoadMods()
         {
-            this.mods.Clear();
             if(!Directory.Exists(Path.Combine(Paths.GameRootPath, "mods"))) {
                 Directory.CreateDirectory(Path.Combine(Paths.GameRootPath, "mods"));
             }
-            foreach (var modName in Directory.EnumerateDirectories(dir))
+            foreach (var item in Directory.EnumerateDirectories(dir))
             {
-                if (File.Exists(Path.Combine(modName, "mod.json")))
+                if (File.Exists(Path.Combine(item, "mod.json")))
                 {
+                    var metadata = JsonConvert.DeserializeObject<ModMetadata>(File.ReadAllText(Path.Combine(item, "mod.json")));
                     try
                     {
-                        Logger?.LogInfo($"Loading Mod from directory: {modName}...");
-                        var mod = Mod.LoadModFromDirectory(modName);
-                        this.mods.Add(mod.metadata.id, mod);
-                        LoadModFilesForMod(mod.metadata.id, forceReload);
-                        Logger?.LogInfo($"Loading Mod '{mod.metadata.id}' completed.");
+                        logger.LogInfo($"Loading Mod from directory: {item}...");
+                        if(mods.TryGetValue(metadata.id, out var mod))
+                        {
+                            this.mods.Add(mod.metadata.id, Mod.LoadFromDirectory(item, mod));
+                        }
+                        else
+                        {
+                            this.mods.Add(metadata.id, Mod.LoadFromDirectory(item));
+                        }
+                        logger.LogInfo($"Loading Mod '{metadata.id}' completed.");
                     }
                     catch(Exception e)
                     {
-                        Logger?.LogError($"Load Mod in '{modName}' failed: {e}.");
+                        logger.LogError($"Load Mod in '{item}' failed: {e}.");
                     }
                 }
             }
@@ -261,133 +220,11 @@ namespace SFHR_ZModLoader
             }
         }
 
-        public void PatchCamoData(ref CamoData src)
+        public void PatchToGameContext(GameContext gctx)
         {
-            foreach (var mod in mods)
+            foreach (var item in mods)
             {
-                if(!mod.Value.namespaces.ContainsKey("sfh"))
-                {
-                    continue;
-                }
-                var ns = mod.Value.namespaces["sfh"];
-                
-                if(!ns.camoDatas.ContainsKey(src.name))
-                {
-                    continue;
-                }
-                var camoData = ns.camoDatas[src.name];
-                if (camoData.texture != null)
-                {
-                    var texture = camoData.texture.Value;
-                    src.ClassTextureNum = -1;
-                    if (texture.texture2D != null)
-                    {
-                        src.Texture = texture.texture2D;
-                    }
-                    else
-                    {
-                        try
-                        {
-                            Logger?.LogInfo($"Loading image '{texture.path}'...");
-                            src.Texture = new Texture2D(1, 1);
-                            ImageConversion.LoadImage(src.Texture, texture.ReadAllBytes());
-                        } 
-                        catch(Exception e)
-                        {
-                            Logger?.LogError($"Load image '{texture.path}' failed: {e}.");
-                        }
-                        camoData.texture = new ModFile{
-                            path = texture.path,
-                            texture2D = src.Texture
-                        };
-                    }
-                }
-                if (camoData.redCamo != null)
-                {
-                    var redCamo = camoData.redCamo.Value;
-                    if (redCamo.texture2D != null)
-                    {
-                        src.RedCamo = camoData.redCamo.Value.texture2D;
-                    }
-                    else
-                    {
-                        try
-                        {
-                            Logger?.LogInfo($"Loading image '{redCamo.path}'...");
-                            src.RedCamo = new Texture2D(1, 1);
-                            ImageConversion.LoadImage(src.RedCamo, redCamo.ReadAllBytes());
-                        }
-                        catch(Exception e)
-                        {
-                            Logger?.LogError($"Load image '{redCamo.path}' failed: {e}.");
-                        }
-                        camoData.redCamo = new ModFile{
-                            path = redCamo.path,
-                            texture2D = src.RedCamo
-                        };
-                    }
-                }
-                if (camoData.icon != null)
-                {
-                    var icon = camoData.icon.Value;
-                    if (icon.texture2D != null)
-                    {
-                        src.Icon = icon.texture2D;
-                    }
-                    else
-                    {
-                        try
-                        {
-                            Logger?.LogInfo($"Loading image '{icon.path}'...");
-                            src.Icon = new Texture2D(1, 1);
-                            ImageConversion.LoadImage(src.Icon, icon.ReadAllBytes());
-                        }
-                        catch(Exception e)
-                        {
-                            Logger?.LogError($"Load image '{icon.path}' failed: {e}.");
-                        }
-                        camoData.icon = new ModFile{
-                            path = icon.path,
-                            texture2D = src.Icon
-                        };
-                    }
-                }
-            }
-        }
-
-        public void PatchGlobalDataLoad(GlobalData globalData)
-        {
-            if(!globalData.ItemTypeInfo.ContainsKey(GI.EItemType.Camo)) {
-                return;
-            }
-            var objects = globalData.ItemTypeInfo[GI.EItemType.Camo].Objects;
-            foreach (var obj in objects)
-            {
-                CamoData camoData = (CamoData)obj;
-                if (!(camoData.name == ""))
-                {
-                    PatchCamoData(ref camoData);
-                }
-            }
-
-            if (SFHRZModLoaderPlugin.DebugEmit)
-            {
-                if (!Directory.Exists(Path.Combine(Paths.GameRootPath, "DebugEmit/camos"))) {
-                    Directory.CreateDirectory(Path.Combine(Paths.GameRootPath, "DebugEmit/camos"));
-                }
-                string text = "";
-                foreach (var obj in objects)
-                {
-                    CamoData camoData = (CamoData)obj;
-                    if (!(camoData.Name == ""))
-                    {
-                        text = string.Concat(new string[] { text, "CamoName.", camoData.name, "|", camoData.Name, "\n" });
-                        text = string.Concat(new string[] { text, "CamoDesc.", camoData.name, "|", camoData.Desc, "\n" });
-                        text += $"CamoTextureName.{camoData.Texture.name}\n";
-                        text += $"CamoRedCamoName.{camoData.RedCamo.name}\n";
-                    }
-                }
-                File.WriteAllText(Path.Combine(Paths.GameRootPath, "DebugEmit/camos.txt"), text);
+                item.Value.PatchToGameContext(gctx);
             }
         }
     }
