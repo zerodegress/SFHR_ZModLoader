@@ -66,9 +66,6 @@ namespace SFHR_ZModLoader
             var icon = camoData?.icon;
 
             var camoDataConf = new ModCamoDataConf {
-                texture = "texture.png",
-                redCamo = "redCamo.png",
-                icon = "icon.png",
                 classTextureNum = -1,
             };
             if(File.Exists(Path.Combine(dir, "camo.json")))
@@ -77,6 +74,21 @@ namespace SFHR_ZModLoader
                 camoDataConf.texture = newConf.texture;
                 camoDataConf.redCamo = newConf.redCamo;
                 camoDataConf.icon = newConf.icon;
+            }
+            else
+            {
+                if(File.Exists(Path.Combine(dir, "texture.png")))
+                {
+                    camoDataConf.texture = "texture.png";
+                }
+                if(File.Exists(Path.Combine(dir, "redCamo.png")))
+                {
+                    camoDataConf.redCamo = "redCamo.png";
+                }
+                if(File.Exists(Path.Combine(dir, "icon.png")))
+                {
+                    camoDataConf.icon = "icon.png";
+                }
             }
             var classTextureNum = camoDataConf.classTextureNum ?? -1;
             if(camoDataConf.texture != null && File.Exists(Path.Combine(dir, camoDataConf.texture)))
