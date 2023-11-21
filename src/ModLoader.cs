@@ -3,13 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices;
 using BepInEx;
 using BepInEx.Logging;
 using Newtonsoft.Json;
-using UnityEngine;
-using UnityEngine.UIElements.Collections;
 
 namespace SFHR_ZModLoader 
 {
@@ -57,11 +53,11 @@ namespace SFHR_ZModLoader
                 var camoName = Path.GetFileName(item);
                 if (ns?.camoDatas.TryGetValue(item, out var camoData) ?? false)
                 {
-                    camoDatas.Add(camoName, ModCamoData.LoadFromDirectory(camoName, item, camoData));
+                    camoDatas.Add(camoName, ModCamoData.LoadFromDirectory(item, camoData));
                 }
                 else
                 {
-                    camoDatas.Add(camoName, ModCamoData.LoadFromDirectory(camoName, item));
+                    camoDatas.Add(camoName, ModCamoData.LoadFromDirectory(item));
                 }
             }
             return new ModNamespace {
@@ -74,7 +70,7 @@ namespace SFHR_ZModLoader
         {
             foreach (var item in camoDatas)
             {
-                item.Value.PatchToGameContext(gctx);
+                item.Value.PatchToGameContext(gctx, name == "sfh" ? null : name);
             }
         }
     }
@@ -142,22 +138,24 @@ namespace SFHR_ZModLoader
         private readonly string dir;
         private Dictionary<string, Mod> mods;
         private readonly ManualLogSource logger; 
-        private readonly EventManager eventManager;
 
         public ModLoader(string dir, ManualLogSource logger, EventManager eventManager)
         {
             this.dir = dir;
             this.mods = new();
             this.logger = logger;
-            this.eventManager = eventManager;
             this.logger.LogInfo("ModLoader created.");
-            this.eventManager.RegisterEventHandler("MODS_LOAD", ev => {
+        }
+
+        public void RegisterEvents(EventManager eventManager)
+        {
+            eventManager.RegisterEventHandler("MODS_LOAD", ev => {
                 LoadMods();
                 eventManager.EmitEvent(new Event {
                     type = "MODS_LOADED",
                 });
             });
-            this.eventManager.RegisterEventHandler("GAMECONTEXT_PATCH", ev => {
+            eventManager.RegisterEventHandler("GAMECONTEXT_PATCH", ev => {
                 if(ev.data == null || ev.data.GetType() != typeof(GameContext))
                 {
                     logger.LogError("GAMECONTEXT_PATCH data incorrect!");
@@ -168,9 +166,9 @@ namespace SFHR_ZModLoader
                 PatchToGameContext(gctx);
                 logger.LogInfo("Game patch completed.");
             });
-            this.eventManager.RegisterEventHandler("GAMECONTEXT_LOADED", ev => {
+            eventManager.RegisterEventHandler("GAMECONTEXT_LOADED", ev => {
                 var gctx = (GameContext)ev.data;
-                this.eventManager.EmitEvent(new Event {
+                eventManager.EmitEvent(new Event {
                     type = "GAMECONTEXT_PATCH", 
                     data = gctx,
                 });
@@ -179,8 +177,9 @@ namespace SFHR_ZModLoader
 
         public void LoadMods()
         {
-            if(!Directory.Exists(Path.Combine(Paths.GameRootPath, "mods"))) {
-                Directory.CreateDirectory(Path.Combine(Paths.GameRootPath, "mods"));
+            logger.LogInfo($"Loading Mods from directory: {dir}...");
+            if(!Directory.Exists(dir)) {
+                Directory.CreateDirectory(dir);
             }
             foreach (var item in Directory.EnumerateDirectories(dir))
             {

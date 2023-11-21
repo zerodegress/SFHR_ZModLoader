@@ -2,59 +2,102 @@
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
 using System.IO;
-using UnityEngine;
-using UnityEngine.InputSystem;
-
-namespace SFHR_ZModLoader 
+namespace SFHR_ZModLoader
 {
-    public class Hooks 
+    public class Hooks
     {
         private static GlobalData? globalData;
-        private static SD? saveData;
         private static ManualLogSource? Logger { get => SFHRZModLoaderPlugin.Logger; }
         private static EventManager? EventManager { get => SFHRZModLoaderPlugin.EventManager; }
 
-        [HarmonyPostfix, HarmonyPatch(typeof(SD), nameof(SD.Load))]
-        public static void Postfix_SD_Load(SD __instance)
-        {
-            saveData = __instance;
-            EventManager?.EmitEvent(new Event {
-                type = "SD_LOADED",
-                data = __instance
-            });
-            if(globalData != null && Logger != null)
-            {
-                SFHRZModLoaderPlugin.GameContext = new(globalData, saveData, Logger);
-                EventManager?.EmitEvent(new Event {
-                    type = "GAMECONTEXT_LOADED",
-                    data = SFHRZModLoaderPlugin.GameContext,
-                });
-            }
-        }
-
         [HarmonyPostfix, HarmonyPatch(typeof(GlobalData), nameof(GlobalData.Load))]
-        public static void Postfix_GlobalData_Load() 
+        public static void Postfix_GlobalData_Load()
         {
             if (!GI.GlobalData)
             {
                 return;
             }
             globalData = GI.GlobalData;
-            EventManager?.EmitEvent(new Event {
+            EventManager?.EmitEvent(new Event
+            {
                 type = "GLOBALDATA_LOADED",
                 data = globalData,
             });
-            if(saveData != null && Logger != null)
+            if (Logger != null)
             {
-                SFHRZModLoaderPlugin.GameContext = new(globalData, saveData, Logger);
-                EventManager?.EmitEvent(new Event {
+                SFHRZModLoaderPlugin.GameContext = new(globalData, Logger);
+                EventManager?.EmitEvent(new Event
+                {
                     type = "GAMECONTEXT_LOADED",
                     data = SFHRZModLoaderPlugin.GameContext,
                 });
+            }
+            try
+            {
+                if (SFHRZModLoaderPlugin.DebugEmit)
+                {
+                    {
+                        var camosCsv = "id, name\n";
+                        foreach (var item in GI.GlobalData.ItemTypeInfo[GI.EItemType.Camo].Objects)
+                        {
+                            var camoData = (CamoData)item;
+                            if (camoData.Name != "")
+                            {
+                                camosCsv += $"{camoData.name}, {camoData.Name}\n";
+                            }
+                        }
+                        File.WriteAllText(Path.Combine(Paths.GameRootPath, "DebugEmit", "camos.csv"), camosCsv);
+                    }
+                    {
+                        var weaponsCsv = "id, name\n";
+                        foreach (var item in GI.GlobalData.ItemTypeInfo[GI.EItemType.All].Objects)
+                        {
+                            var weaponData = (WeaponData)item;
+                            if (weaponData.Name != "")
+                            {
+                                weaponsCsv += $"{weaponData.name}, {weaponData.Name}\n";
+                            }
+                            File.WriteAllText(Path.Combine(Paths.GameRootPath, "DebugEmit", "weapons.csv"), weaponsCsv);
+                        }
+                    }
+                    {
+                        var texturesCsv = "id, name\n";
+                        foreach (var item in GI.GlobalData.Textures)
+                        {
+                            if (item.Key != "")
+                            {
+                                texturesCsv += $"{item.Key}, {item.Value.name}\n";
+                            }
+                        }
+                        File.WriteAllText(Path.Combine(Paths.GameRootPath, "DebugEmit", "textures.csv"), texturesCsv);
+                    }
+                    {
+                        var soundsCsv = "id, name\n";
+                        foreach (var item in GI.GlobalData.Sounds)
+                        {
+                            if (item.Key != "")
+                            {
+                                soundsCsv += $"{item.Key}, {item.Value.name}\n";
+                            }
+                        }
+                        File.WriteAllText(Path.Combine(Paths.GameRootPath, "DebugEmit", "sounds.csv"), soundsCsv);
+                    }
+                    {
+                        var songsCsv = "id, name\n";
+                        foreach (var item in GI.GlobalData.Songs)
+                        {
+                            if (item.Value.name != "")
+                            {
+                                songsCsv += $"{item.Key}, {item.Value.name}\n";
+                            }
+                        }
+                        File.WriteAllText(Path.Combine(Paths.GameRootPath, "DebugEmit", "songs.csv"), songsCsv);
+                    }
+                }
+            }
+            catch (System.Exception)
+            {
             }
         }
     }

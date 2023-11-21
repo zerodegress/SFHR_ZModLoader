@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using BepInEx.Logging;
 using Newtonsoft.Json;
 using UnityEngine;
 
@@ -55,12 +54,13 @@ namespace SFHR_ZModLoader
         public Texture2D? icon;
         public int classTextureNum;
 
-        public static ModCamoData LoadFromDirectory(string name, string dir, ModCamoData? camoData = null)
+        public static ModCamoData LoadFromDirectory(string dir, ModCamoData? camoData = null)
         {
             if (!Directory.Exists(dir))
             {
                 throw new ModLoadingException($"CamoData Directory '{dir}' not exists.");
             }
+            var name = Path.GetFileName(dir);
             var texture = camoData?.texture;
             var redCamo = camoData?.redCamo;
             var icon = camoData?.icon;
@@ -127,10 +127,10 @@ namespace SFHR_ZModLoader
             };
         }
 
-        public readonly void PatchToGameContext(GameContext gctx)
+        public readonly void PatchToGameContext(GameContext gctx, string? namespaceName)
         {
             var self = this;
-            gctx.PatchCamoData(name, camoData => {
+            gctx.PatchCamoData(namespaceName != null ? $"{namespaceName}:{name}" : name, camoData => {
                 camoData.ClassTextureNum = self.classTextureNum;
                 if(self.texture != null)
                 {
