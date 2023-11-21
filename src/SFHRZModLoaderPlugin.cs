@@ -1,32 +1,33 @@
 #nullable enable
 using System.IO;
 using BepInEx;
+using BepInEx.Unity.IL2CPP;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
+using BepInEx6.PluginTemplate.Unity.Il2Cpp;
 
 namespace SFHR_ZModLoader
 {
-    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
-    public class SFHRZModLoaderPlugin : BaseUnityPlugin
+    [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
+    public class SFHRZModLoaderPlugin : BasePlugin
     {
         internal const string ZERO_COMPONENTS_NAME = "ZeroComponentsv1";
         internal static GameObject? ZeroComponents { get; set; }
         public static InputMonitor? InputMonitor { get; set; }
-        internal static new ManualLogSource? Logger { get; set; }
+        internal static ManualLogSource? Logger { get; set; }
         //public static GameContext? Context { get; set; }
-        public static SaveManager? SaveManager { get; set; }
         public static ModLoader? ModLoader { get; set; }
         public static GameContext? GameContext { get; set; }
         public static EventManager? EventManager { get; set; }
-        public static bool DebugEmit { get; set; } = false;
+        public static bool DebugEmit { get; set; } = true;
 
-        private void Awake()
+        public override void Load()
         {
-            Logger = base.Logger;
+            Logger = base.Log;
             // Plugin startup logic
-            Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
+            Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
 
             if (DebugEmit)
             {
@@ -52,6 +53,7 @@ namespace SFHR_ZModLoader
 
             // SaveMgr = new SaveManager(Path.Combine(Paths.GameRootPath, "saves"));
             ModLoader = new ModLoader(Path.Combine(Paths.GameRootPath, "mods"), Logger, EventManager);
+            ModLoader.RegisterEvents(EventManager);
             EventManager.EmitEvent(new Event {
                 type = "MODS_LOAD"
             });
