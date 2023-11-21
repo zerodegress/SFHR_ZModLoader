@@ -4,6 +4,10 @@
 
 为《战火英雄：重制版》制作的多用途Mod加载器。
 
+## 注意
+
+3.0.0开始迁移到IL2CPP，如更新请重新安装插件框架
+
 ## 特性
 
 - 在游戏原版资源之外加载迷彩。
@@ -11,7 +15,7 @@
 
 ## 安装
 
-1. 从[这里](https://github.com/BepInEx/BepInEx/releases/tag/v5.4.22)下载BepInEx插件包并解压到游戏根目录。
+1. 从[这里](https://builds.bepinex.dev/projects/bepinex_be/674/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.674%2B82077ec.zip)下载BepInEx插件包（IL2CPP win x64）并解压到游戏根目录。
 2. 前往本仓库的Release页面下载最新的插件包，同样解压到游戏根目录。
 3. 打开游戏享受吧！
 
