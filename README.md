@@ -11,6 +11,8 @@
 ## 特性
 
 - 在游戏原版资源之外加载迷彩。
+- 在游戏原版资源之外加载武器。
+- 在游戏根目录下生成`DebugEmit`文件夹提供Mod开发所需的一些资料。
 - 更多特性正在开发中……
 
 ## 安装
@@ -23,7 +25,7 @@
 
 将`Mod`放置在游戏根目录下的`mods`文件夹中即可加载，关于`Mod`的更多信息请参考[Mod开发](#mod开发)。
 
-在游戏中，按下`P`键可以热重载资源，不过如果是对原版的修改（事实上目前也只有原版修改功能），一开始没有修改贴图的话不能重载，这是个技术性问题。
+<del>在游戏中，按下`P`键可以热重载资源。</del>目前由于游戏框架变动导致功能失效，具体参考[#2](https://github.com/zerodegress/SFHR_ZModLoader/issues/2).
 
 ## Mod开发
 
@@ -60,6 +62,16 @@ Mod文件夹
 
 |----redCamo.png
 
+|--weapons
+
+|----equipTexture.png
+
+|----equipTextureAlt.png
+
+|----menuTexture.png
+
+|----unequipTexture.png
+
 |mod.json
 
 - `sfh`:所有原版数据和资产都在这个文件夹（你也可以定制你自己的文件夹名，比如说xxddc之类的，但sfh被指定为原版的文件夹，又称**命名空间**）下，更改这个命名空间下的文件说明你将覆盖原版的数据和资产。
@@ -68,8 +80,21 @@ Mod文件夹
 - `texture.png`:这是人物贴图文件
 - `icon.png`:这是人物图标文件
 - `redCamo.png`:这是迷彩层文件
+- `weapons`:武器文件夹，其下每一个文件夹代表一个与之名称相同的武器
+- `weapons`文件夹下每一个贴图代表了武器的某种状态的贴图，目前只能确定`equipTexture.png`是装备在人物身上时显示的贴图。
 
 （更多内容正在开发中……）
+
+## 参与贡献
+
+参考以下步骤搭建插件开发环境：
+
+1. 确保你安装了[BepInEx6的合适版本]((https://builds.bepinex.dev/projects/bepinex_be/674/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.674%2B82077ec.zip))。
+2. 在项目根目录下建立一个新文件`.gamepath`，并在其中粘贴你的游戏根目录位置。
+3. 运行`./scripts/FetchDependencies.ps1`拉取所有所需依赖
+4. 运行`dotnet build`构建你的插件
+5. 运行`./scripts/Deploy.ps1`将插件部署到你的游戏（你可能需要先将原来安装的插件本体删除，但是请保留插件本身单个dll之外的依赖）
+6. 在你喜欢的开发环境里进行开发，比如`VSCode`（本项目当前开发主要在`VSCode`下进行）。
 
 ## 许可证
 
