@@ -50,9 +50,16 @@ namespace SFHR_ZModLoader
                 Logger.LogWarning($"GameContext: Patch WeaponData '{name}' failed: Not exists.");
                 return;
             }
-            var weaponData = (WeaponData)obj;
-            patcher(weaponData);
-            Logger.LogInfo($"GameContext: Patch WeaponData '{name}' completed.");
+            try
+            {
+                var weaponData = Il2CppObjectPool.Get<WeaponData>(IL2CPP.Il2CppObjectBaseToPtrNotNull(obj));
+                patcher(weaponData);
+                Logger.LogInfo($"GameContext: Patch WeaponData '{name}' completed.");
+            }
+            catch(Exception e)
+            {
+                Logger.LogError($"GameContext: Patch WeaponData '{name}' error: '{e}'.");
+            }
         }
         
         public void InsertTexture(string name, Texture2D newTexture)
