@@ -9,3 +9,4 @@ New-Item -ItemType SymbolicLink -Path 'deps/UnityEngine.InputLegacyModule.dll' -
 New-Item -ItemType SymbolicLink -Path 'deps/UnityEngine.CoreModule.dll' -Value  $(Join-Path -Path $gamePath -ChildPath 'BepInEx/Interop/UnityEngine.CoreModule.dll') -ErrorAction SilentlyContinue
 New-Item -ItemType SymbolicLink -Path 'deps/UnityEngine.AudioModule.dll' -Value  $(Join-Path -Path $gamePath -ChildPath 'BepInEx/Interop/UnityEngine.AudioModule.dll') -ErrorAction SilentlyContinue
 New-Item -ItemType SymbolicLink -Path 'deps/UnityEngine.ImageConversionModule.dll' -Value  $(Join-Path -Path $gamePath -ChildPath 'BepInEx/Interop/UnityEngine.ImageConversionModule.dll') -ErrorAction SilentlyContinue
+New-Item -ItemType SymbolicLink -Path 'deps/FishNet.Runtime.dll' -Value  $(Join-Path -Path $gamePath -ChildPath 'BepInEx/Interop/FishNet.Runtime.dll') -ErrorAction SilentlyContinue

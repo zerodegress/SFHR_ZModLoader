@@ -35,6 +35,10 @@
       <HintPath>./deps/Assembly-CSharp-firstpass.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="FishNet.Runtime">
+      <HintPath>./deps/FishNet.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="UnityEngine">
       <HintPath>./deps/UnityEngine.dll</HintPath>
       <Private>false</Private>
