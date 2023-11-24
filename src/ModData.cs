@@ -305,7 +305,9 @@ namespace SFHR_ZModLoader
                 {
                     if(camoData.Texture != null && camoData.Texture.isReadable)
                     {
+                        SFHRZModLoaderPlugin.Logger?.LogInfo($"Hot reloading texture: {camoData.Texture.name}");
                         ImageConversion.LoadImage(camoData.Texture, self.texture.EncodeToPNG());
+                        camoData.Texture.name += "+1";
                     }
                     else
                     {

@@ -6,6 +6,7 @@ using BepInEx.Logging;
 using HarmonyLib;
 using Il2CppInterop.Runtime.Injection;
 using UnityEngine;
+using Il2CppInterop.Runtime;
 
 namespace SFHR_ZModLoader;
 
@@ -67,28 +68,6 @@ public class SFHRZModLoaderPlugin : BasePlugin
                 type = "GAMECONTEXT_PATCH",
                 data = GameContext,
             });
-        });
-        InputMonitor.SetAction(UnityEngine.KeyCode.U, () => {
-            foreach(var spriteRenderer in Resources.FindObjectsOfTypeAll<SpriteRenderer>())
-            {
-                if(spriteRenderer != null)
-                {
-                    Logger.LogInfo("az");
-                    var texture = new Texture2D(1, 1);
-                    spriteRenderer.sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), Vector2.one * 0.5f);
-                }
-            }
-            
-            foreach(var mesh in Resources.FindObjectsOfTypeAll<MeshRenderer>())
-            {
-                if(mesh != null)
-                {
-                    mesh.material = new Material(mesh.material)
-                    {
-                        mainTexture = new Texture2D(1, 1)
-                    };
-                }
-            }
         });
 
         Harmony.CreateAndPatchAll(typeof(Hooks));
