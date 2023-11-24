@@ -7,6 +7,7 @@ namespace SFHR_ZModLoader
 {
     public class Hooks
     {
+        private static bool isGameContextLoaded = false;
         private static GlobalData? globalData;
         private static ManualLogSource? Logger { get => SFHRZModLoaderPlugin.Logger; }
         private static EventManager? EventManager { get => SFHRZModLoaderPlugin.EventManager; }
@@ -24,8 +25,9 @@ namespace SFHR_ZModLoader
                 type = "GLOBALDATA_LOADED",
                 data = globalData,
             });
-            if (Logger != null)
+            if (Logger != null && !isGameContextLoaded)
             {
+                isGameContextLoaded = true;
                 SFHRZModLoaderPlugin.GameContext = new(globalData, Logger);
                 EventManager?.EmitEvent(new Event
                 {

@@ -305,6 +305,7 @@ namespace SFHR_ZModLoader
                 {
                     if(camoData.Texture != null && camoData.Texture.isReadable)
                     {
+                        SFHRZModLoaderPlugin.Logger?.LogInfo($"Hot reloading camo texture: {camoData.Texture.name}");
                         ImageConversion.LoadImage(camoData.Texture, self.texture.EncodeToPNG());
                     }
                     else
@@ -316,6 +317,7 @@ namespace SFHR_ZModLoader
                 {
                     if(camoData.RedCamo != null && camoData.RedCamo.isReadable)
                     {
+                        SFHRZModLoaderPlugin.Logger?.LogInfo($"Hot reloading camo redCamo: {camoData.Texture.name}");
                         ImageConversion.LoadImage(camoData.RedCamo, self.redCamo.EncodeToPNG());
                     }
                     else
@@ -327,6 +329,7 @@ namespace SFHR_ZModLoader
                 {
                     if(camoData.Icon != null && camoData.Icon.isReadable)
                     {
+                        SFHRZModLoaderPlugin.Logger?.LogInfo($"Hot reloading camo icon: {camoData.Texture.name}");
                         ImageConversion.LoadImage(camoData.Icon, self.icon.EncodeToPNG());
                     }
                     else

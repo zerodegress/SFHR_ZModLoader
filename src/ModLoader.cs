@@ -61,7 +61,7 @@ namespace SFHR_ZModLoader
                     var camoName = Path.GetFileName(item);
                     if (ns?.camoDatas.TryGetValue(item, out var camoData) ?? false)
                     {
-                        camoDatas.Add(camoName, ModCamoData.LoadFromDirectory(item, camoData));
+                        camoDatas[camoName] = ModCamoData.LoadFromDirectory(item, camoData);
                     }
                     else
                     {
@@ -88,7 +88,7 @@ namespace SFHR_ZModLoader
                     var weaponName = Path.GetFileName(item);
                     if (ns?.weaponDatas.TryGetValue(item, out var weaponData) ?? false)
                     {
-                        weaponDatas.Add(weaponName, ModWeaponData.LoadFromDirectory(item, weaponData));
+                        weaponDatas[weaponName] = ModWeaponData.LoadFromDirectory(item, weaponData);
                     }
                     else
                     {
@@ -152,7 +152,7 @@ namespace SFHR_ZModLoader
             {
                 if(namespaces.TryGetValue(Path.GetFileName(nsdir), out var ns))
                 {
-                    namespaces.Add(Path.GetFileName(nsdir), ModNamespace.LoadFromDirectory(nsdir, ns));
+                    namespaces[Path.GetFileName(nsdir)] = ModNamespace.LoadFromDirectory(nsdir, ns);
                 }
                 else
                 {
@@ -208,6 +208,7 @@ namespace SFHR_ZModLoader
                     logger.LogError("GAMECONTEXT_PATCH data incorrect!");
                     return;
                 }
+                LoadMods();
                 var gctx = (GameContext)ev.data;
                 logger.LogInfo("Game patching...");
                 PatchToGameContext(gctx);
@@ -238,7 +239,7 @@ namespace SFHR_ZModLoader
                         logger.LogInfo($"Loading Mod from directory: {item}...");
                         if(mods.TryGetValue(metadata.id, out var mod))
                         {
-                            this.mods.Add(mod.metadata.id, Mod.LoadFromDirectory(item, mod));
+                            this.mods[mod.metadata.id] = Mod.LoadFromDirectory(item, mod);
                         }
                         else
                         {
