@@ -16,5 +16,5 @@ $dependencies = @(
 New-Item -ItemType Directory -Path 'deps' -ErrorAction SilentlyContinue
 
 foreach ($dependency in $dependencies) {
-    New-Item -ItemType SymbolicLink -Path "deps/$dependency" -Value $(Join-Path -Path $gamePath -ChildPath "BepInEx/Interop/$dependency") -ErrorAction SilentlyContinue
+    New-Item -ItemType SymbolicLink -Path "deps/$dependency" -Value $(Join-Path -Path $gamePath -ChildPath "BepInEx/interop/$dependency") -ErrorAction SilentlyContinue
 }
