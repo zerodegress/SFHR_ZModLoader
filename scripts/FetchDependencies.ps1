@@ -1,12 +1,20 @@
 $gamePath = Resolve-Path $(Get-Content '.gamepath')
+$dependencies = @(
+    "Assembly-CSharp.dll",
+    "Assembly-CSharp-firstpass.dll",
+    "Il2Cppmscorlib.dll",
+    "UnityEngine.dll",
+    "UnityEngine.InputModule.dll",
+    "UnityEngine.InputLegacyModule.dll",
+    "UnityEngine.CoreModule.dll",
+    "UnityEngine.AudioModule.dll",
+    "UnityEngine.ImageConversionModule.dll",
+    "UnityEngine.ImageConversionModule.dll",
+    "deps/FishNet.Runtime.dll"
+)
+
 New-Item -ItemType Directory -Path 'deps' -ErrorAction SilentlyContinue
-New-Item -ItemType SymbolicLink -Path 'deps/Assembly-CSharp.dll' -Value $(Join-Path -Path $gamePath -ChildPath 'BepInEx/Interop/Assembly-CSharp.dll') -ErrorAction SilentlyContinue
-New-Item -ItemType SymbolicLink -Path 'deps/Assembly-CSharp-firstpass.dll' -Value $(Join-Path -Path $gamePath -ChildPath 'BepInEx/Interop/Assembly-CSharp-firstpass.dll') -ErrorAction SilentlyContinue
-New-Item -ItemType SymbolicLink -Path 'deps/Il2Cppmscorlib.dll' -Value  $(Join-Path -Path $gamePath -ChildPath 'BepInEx/Interop/Il2Cppmscorlib.dll') -ErrorAction SilentlyContinue
-New-Item -ItemType SymbolicLink -Path 'deps/UnityEngine.dll' -Value  $(Join-Path -Path $gamePath -ChildPath 'BepInEx/Interop/UnityEngine.dll') -ErrorAction SilentlyContinue
-New-Item -ItemType SymbolicLink -Path 'deps/UnityEngine.InputModule.dll' -Value  $(Join-Path -Path $gamePath -ChildPath 'BepInEx/Interop/UnityEngine.InputModule.dll') -ErrorAction SilentlyContinue
-New-Item -ItemType SymbolicLink -Path 'deps/UnityEngine.InputLegacyModule.dll' -Value  $(Join-Path -Path $gamePath -ChildPath 'BepInEx/Interop/UnityEngine.InputLegacyModule.dll') -ErrorAction SilentlyContinue
-New-Item -ItemType SymbolicLink -Path 'deps/UnityEngine.CoreModule.dll' -Value  $(Join-Path -Path $gamePath -ChildPath 'BepInEx/Interop/UnityEngine.CoreModule.dll') -ErrorAction SilentlyContinue
-New-Item -ItemType SymbolicLink -Path 'deps/UnityEngine.AudioModule.dll' -Value  $(Join-Path -Path $gamePath -ChildPath 'BepInEx/Interop/UnityEngine.AudioModule.dll') -ErrorAction SilentlyContinue
-New-Item -ItemType SymbolicLink -Path 'deps/UnityEngine.ImageConversionModule.dll' -Value  $(Join-Path -Path $gamePath -ChildPath 'BepInEx/Interop/UnityEngine.ImageConversionModule.dll') -ErrorAction SilentlyContinue
-New-Item -ItemType SymbolicLink -Path 'deps/FishNet.Runtime.dll' -Value  $(Join-Path -Path $gamePath -ChildPath 'BepInEx/Interop/FishNet.Runtime.dll') -ErrorAction SilentlyContinue
+
+foreach ($dependency in $dependencies) {
+    New-Item -ItemType SymbolicLink -Path "deps/$dependency" -Value $(Join-Path -Path $gamePath -ChildPath "BepInEx/Interop/$dependency") -ErrorAction SilentlyContinue
+}
