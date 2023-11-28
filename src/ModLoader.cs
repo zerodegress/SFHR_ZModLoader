@@ -184,14 +184,13 @@ namespace SFHR_ZModLoader
     {
         private readonly string dir;
         private Dictionary<string, Mod> mods;
-        private readonly ManualLogSource logger; 
+        private ManualLogSource? logger { get => SFHRZModLoaderPlugin.Logger; }
 
-        public ModLoader(string dir, ManualLogSource logger, EventManager eventManager)
+        public ModLoader(string dir)
         {
             this.dir = dir;
             this.mods = new();
-            this.logger = logger;
-            this.logger.LogInfo("ModLoader created.");
+            logger?.LogInfo("ModLoader created.");
         }
 
         public void RegisterEvents(EventManager eventManager)
@@ -205,14 +204,14 @@ namespace SFHR_ZModLoader
             eventManager.RegisterEventHandler("GAMECONTEXT_PATCH", ev => {
                 if(ev.data == null || ev.data.GetType() != typeof(GameContext))
                 {
-                    logger.LogError("GAMECONTEXT_PATCH data incorrect!");
+                    logger?.LogError("GAMECONTEXT_PATCH data incorrect!");
                     return;
                 }
                 LoadMods();
                 var gctx = (GameContext)ev.data;
-                logger.LogInfo("Game patching...");
+                logger?.LogInfo("Game patching...");
                 PatchToGameContext(gctx);
-                logger.LogInfo("Game patch completed.");
+                logger?.LogInfo("Game patch completed.");
             });
             eventManager.RegisterEventHandler("GAMECONTEXT_LOADED", ev => {
                 var gctx = (GameContext)ev.data;
@@ -225,7 +224,7 @@ namespace SFHR_ZModLoader
 
         public void LoadMods()
         {
-            logger.LogInfo($"Loading Mods from directory: {dir}...");
+            logger?.LogInfo($"Loading Mods from directory: {dir}...");
             if(!Directory.Exists(dir)) {
                 Directory.CreateDirectory(dir);
             }
@@ -236,7 +235,7 @@ namespace SFHR_ZModLoader
                     var metadata = JsonConvert.DeserializeObject<ModMetadata>(File.ReadAllText(Path.Combine(item, "mod.json")));
                     try
                     {
-                        logger.LogInfo($"Loading Mod from directory: {item}...");
+                        logger?.LogInfo($"Loading Mod from directory: {item}...");
                         if(mods.TryGetValue(metadata.id, out var mod))
                         {
                             this.mods[mod.metadata.id] = Mod.LoadFromDirectory(item, mod);
@@ -245,11 +244,11 @@ namespace SFHR_ZModLoader
                         {
                             this.mods.Add(metadata.id, Mod.LoadFromDirectory(item));
                         }
-                        logger.LogInfo($"Loading Mod '{metadata.id}' completed.");
+                        logger?.LogInfo($"Loading Mod '{metadata.id}' completed.");
                     }
                     catch(Exception e)
                     {
-                        logger.LogError($"Load Mod in '{item}' failed: {e}.");
+                        logger?.LogError($"Load Mod in '{item}' failed: {e}.");
                     }
                 }
             }

@@ -36,7 +36,6 @@ public class SFHRZModLoaderPlugin : BasePlugin
             }
         }
 
-
         EventManager = new(Logger);
 
         ClassInjector.RegisterTypeInIl2Cpp<InputMonitor>();
@@ -54,7 +53,7 @@ public class SFHRZModLoaderPlugin : BasePlugin
             InputMonitor = ZeroComponents.AddComponent<InputMonitor>();
         }
 
-        ModLoader = new ModLoader(Path.Combine(Paths.GameRootPath, "mods"), Logger, EventManager);
+        ModLoader = new ModLoader(Path.Combine(Paths.GameRootPath, "mods"));
         ModLoader.RegisterEvents(EventManager);
         EventManager.EmitEvent(new Event {
             type = "MODS_LOAD"

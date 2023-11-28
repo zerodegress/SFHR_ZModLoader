@@ -9,7 +9,7 @@ namespace SFHR_ZModLoader
 {
     public class InputMonitor: MonoBehaviour
     {
-        private ManualLogSource? Logger { get; set; } = SFHRZModLoaderPlugin.Logger;
+        private static ManualLogSource? Logger { get; set; } = SFHRZModLoaderPlugin.Logger;
         private Dictionary<KeyCode, Action> KeyboradListeners { get; set; }
 
         public InputMonitor()
