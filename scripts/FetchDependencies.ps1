@@ -10,7 +10,9 @@ $dependencies = @(
     "UnityEngine.AudioModule.dll",
     "UnityEngine.ImageConversionModule.dll",
     "UnityEngine.ImageConversionModule.dll",
-    "deps/FishNet.Runtime.dll"
+    "FishNet.Runtime.dll",
+    "UnityEngine.UI.dll"
+    "UnityEngine.UIModule.dll"
 )
 
 New-Item -ItemType Directory -Path 'deps' -ErrorAction SilentlyContinue
