@@ -5,8 +5,6 @@ using BepInEx.Unity.IL2CPP;
 using BepInEx.Logging;
 using HarmonyLib;
 using Il2CppInterop.Runtime.Injection;
-using UnityEngine;
-using Il2CppInterop.Runtime;
 
 namespace SFHR_ZModLoader;
 
@@ -53,6 +51,8 @@ public class SFHRZModLoaderPlugin : BasePlugin
             InputMonitor = ZeroComponents.AddComponent<InputMonitor>();
         }
 
+        // 测试下UI
+
         ModLoader = new ModLoader(Path.Combine(Paths.GameRootPath, "mods"));
         ModLoader.RegisterEvents(EventManager);
         EventManager.EmitEvent(new Event {
@@ -64,11 +64,9 @@ public class SFHRZModLoaderPlugin : BasePlugin
                 return;
             }
             EventManager.EmitEvent(new Event {
-                type = "GAMECONTEXT_PATCH",
-                data = GameContext,
+                type = "MODS_RELOAD"
             });
         });
-
         Harmony.CreateAndPatchAll(typeof(Hooks));
     }
 }
