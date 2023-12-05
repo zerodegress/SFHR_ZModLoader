@@ -5,6 +5,8 @@ using System.IO;
 using System.Linq;
 using BepInEx.Logging;
 using Newtonsoft.Json;
+using SFHR_ZModLoader.Scripting;
+using SFHR_ZModLoader.Modding;
 
 namespace SFHR_ZModLoader;
 

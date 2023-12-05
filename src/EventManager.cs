@@ -34,7 +34,7 @@ namespace SFHR_ZModLoader
             }
         }
 
-        public void RegisterEventHandler(string type, Action<Event> handler)
+        public void RegisterEventHandler(string type, Action<Event> handler, string? handlerId = null)
         {
             if(eventHandlers.TryGetValue(type, out var curHandler))
             {

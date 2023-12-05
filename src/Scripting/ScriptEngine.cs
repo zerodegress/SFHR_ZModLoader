@@ -2,7 +2,7 @@
 
 using Jint;
 
-namespace SFHR_ZModLoader;
+namespace SFHR_ZModLoader.Scripting;
 
 public class ModScriptEngineWrapper
 {

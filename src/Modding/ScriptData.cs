@@ -1,7 +1,7 @@
 #nullable enable
 using System;
 
-namespace SFHR_ZModLoader;
+namespace SFHR_ZModLoader.Modding;
 
 
 [Serializable]

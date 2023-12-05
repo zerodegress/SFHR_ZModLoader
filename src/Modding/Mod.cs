@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
+using SFHR_ZModLoader.Scripting;
 
-namespace SFHR_ZModLoader;
+namespace SFHR_ZModLoader.Modding;
 
 public struct Mod
 {

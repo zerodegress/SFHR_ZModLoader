@@ -6,6 +6,7 @@ using BepInEx.Logging;
 using HarmonyLib;
 using Il2CppInterop.Runtime.Injection;
 using Jint;
+using SFHR_ZModLoader.Scripting;
 
 namespace SFHR_ZModLoader;
 
@@ -68,6 +69,7 @@ public class SFHRZModLoaderPlugin : BasePlugin
             });
         });
         ScriptEngine.Engine.SetValue("console", new ScriptObjectConsole(Logger));
+        ScriptEngine.Engine.SetValue("EventManager", EventManager);
         EventManager.EmitEvent(new Event {
             type = "SCRIPT_ENGINE_READY"
         });

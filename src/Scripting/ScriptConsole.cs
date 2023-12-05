@@ -2,7 +2,7 @@
 
 using BepInEx.Logging;
 
-namespace SFHR_ZModLoader;
+namespace SFHR_ZModLoader.Scripting;
 
 class ScriptObjectConsole {
     private ManualLogSource Logger { get; set; }

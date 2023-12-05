@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
-using UnityEngine;
+using SFHR_ZModLoader.Scripting;
 
-namespace SFHR_ZModLoader;
+namespace SFHR_ZModLoader.Modding;
 
 [Serializable]
 public struct ModVector3

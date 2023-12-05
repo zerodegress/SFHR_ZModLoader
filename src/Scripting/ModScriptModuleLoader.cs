@@ -1,14 +1,12 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.IO;
 using Esprima;
 using Esprima.Ast;
 using Jint;
-using Jint.Native;
 using Jint.Runtime.Modules;
 
-namespace SFHR_ZModLoader;
+namespace SFHR_ZModLoader.Scripting;
 
 public class ModScriptModules 
 {

@@ -1,11 +1,10 @@
 #nullable enable
 using System;
-using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
 using UnityEngine;
 
-namespace SFHR_ZModLoader;
+namespace SFHR_ZModLoader.Modding;
 
 [Serializable]
 public struct ModWeaponsConf
