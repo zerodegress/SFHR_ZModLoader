@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json;
 using UnityEngine;
 
@@ -43,14 +44,17 @@ public struct ModMetadata
 
 public struct ModNamespace
 {
+    public string modId;
     public string name;
     public Dictionary<string, ModCamoData> camoDatas;
 
     public Dictionary<string, ModWeaponData> weaponDatas;
     public Dictionary<string, string> scripts;
+    public string? scriptsEntry;
 
-    public static ModNamespace LoadFromDirectory(string dir, ModNamespace? ns = null)
+    public static ModNamespace LoadFromDirectory(string dir, string modId, ModNamespace? ns = null)
     {
+        // Namespace
         if (!Directory.Exists(dir))
         {
             throw new ModLoadingException($"Namespace directory '{dir}' not exists.");
@@ -71,9 +75,11 @@ public struct ModNamespace
             {
                 camos = newConf.camos ?? nsConf.camos,
                 weapons = newConf.weapons ?? nsConf.weapons,
+                scripts = newConf.scripts ?? nsConf.scripts,
             };
         }
 
+        // CamoData
         var camosConf = new ModCamosConf { };
         if (File.Exists(Path.Combine(dir, nsConf.camos, "camos.json")))
         {
@@ -98,9 +104,10 @@ public struct ModNamespace
         }
         else
         {
-            SFHRZModLoaderPlugin.Logger?.LogInfo($"Skips camos at '{Path.Combine(dir, nsConf.camos)}'.");
+            SFHRZModLoaderPlugin.Logger?.LogInfo($"Skips camos at '{Path.Combine(dir, nsConf.camos)}' beause it is missing.");
         }
 
+        // WeaponData
         var weaponsConf = new ModWeaponsConf { };
         if (File.Exists(Path.Combine(dir, nsConf.weapons, "weapons.json")))
         {
@@ -125,15 +132,33 @@ public struct ModNamespace
         }
         else
         {
-            SFHRZModLoaderPlugin.Logger?.LogInfo($"Skips weapons at '{Path.Combine(dir, nsConf.weapons)}'.");
+            SFHRZModLoaderPlugin.Logger?.LogInfo($"Skipped weapons at '{Path.Combine(dir, nsConf.weapons)}' beause it is missing.");
         }
 
+        var scripts = new Dictionary<string, string>();
+        var scriptsEntry = (string?)null;
+        // Script
+        if (Directory.Exists(Path.Combine(dir, nsConf.scripts)))
+        {
+            var scriptsDirectory = Path.Combine(dir, nsConf.scripts);
+            scriptsEntry = "index.js";
+            Directory.GetFiles(scriptsDirectory).ToList().ForEach(script => {
+                scripts.Add($"{Path.GetRelativePath(scriptsDirectory, script).Replace('\\', '/')}", File.ReadAllText(script));
+            });
+        }
+        else
+        {
+            SFHRZModLoaderPlugin.Logger?.LogInfo($"Skipped scripts at '{Path.Combine(dir, nsConf.scripts)}' beause it is missing.");
+        }
 
         return new ModNamespace
         {
             name = nsname,
             camoDatas = camoDatas,
             weaponDatas = weaponDatas,
+            scripts = scripts,
+            scriptsEntry = scriptsEntry,
+            modId = modId,
         };
     }
 
@@ -147,6 +172,18 @@ public struct ModNamespace
         {
             item.Value.PatchToGameContext(gctx, name == "sfh" ? null : name);
         }
+    }
+
+    public readonly string? LoadScripts(string modId, ModScriptModules modScriptModules)
+    {
+        var scriptsEntry = this.scriptsEntry;
+        var nsname = this.name;
+        scripts.ToList().ForEach(item => {
+            var moduleName = $"mod://{Path.Join(modId, nsname, item.Key).Replace('\\', '/')}";
+            modScriptModules.AddModule(modId, nsname, item.Key.Replace('\\', '/'), item.Value);
+            SFHRZModLoaderPlugin.Logger?.LogInfo($"Loaded script: '{moduleName}'.");
+        });
+        return this.scriptsEntry != null ? $"mod://{Path.Join(modId, nsname, scriptsEntry).Replace('\\', '/')}" : null;
     }
 
     public readonly void UnpatchToGameContext(GameContext gctx)

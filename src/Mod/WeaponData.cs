@@ -10,8 +10,8 @@ namespace SFHR_ZModLoader;
 [Serializable]
 public struct ModWeaponsConf
 {
-    public List<string>? includes;
-    public List<string>? excludes;
+    public string[]? includes;
+    public string[]? excludes;
 }
 
 [Serializable]

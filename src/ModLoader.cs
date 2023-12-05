@@ -2,72 +2,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using BepInEx.Logging;
 using Newtonsoft.Json;
 
 namespace SFHR_ZModLoader;
-
-public struct Mod
-{
-    public ModMetadata metadata;
-    public Dictionary<string, ModNamespace> namespaces;
-    public Mod(ModMetadata metadata)
-    {
-        this.metadata = metadata;
-        this.namespaces = new();
-    }
-
-    public static Mod LoadFromDirectory(string dir, Mod? mod = null)
-    {
-        if (!Directory.Exists(dir))
-        {
-            throw new ModLoadingException($"Mod directory '{dir}' not found.");
-        }
-        ModMetadata metadata;
-        try
-        {
-            metadata = JsonConvert.DeserializeObject<ModMetadata>(File.ReadAllText(Path.Combine(dir, "mod.json")));
-        }
-        catch
-        {
-            throw new ModLoadingException($"Errors in the metadata file 'mod.json'.");
-        }
-        var namespaces = mod?.namespaces ?? new Dictionary<string, ModNamespace>();
-
-        foreach (var nsdir in Directory.EnumerateDirectories(dir))
-        {
-            if (namespaces.TryGetValue(Path.GetFileName(nsdir), out var ns))
-            {
-                namespaces[Path.GetFileName(nsdir)] = ModNamespace.LoadFromDirectory(nsdir, ns);
-            }
-            else
-            {
-                namespaces.Add(Path.GetFileName(nsdir), ModNamespace.LoadFromDirectory(nsdir));
-            }
-        }
-        return new Mod
-        {
-            metadata = metadata,
-            namespaces = namespaces,
-        };
-    }
-
-    public readonly void PatchToGameContext(GameContext gctx)
-    {
-        foreach (var item in namespaces)
-        {
-            item.Value.PatchToGameContext(gctx);
-        }
-    }
-
-    public readonly void UnpatchToGameContext(GameContext gctx)
-    {
-        foreach (var item in namespaces)
-        {
-            item.Value.UnpatchToGameContext(gctx);
-        }
-    }
-}
 
 public class ModLoadingException : Exception
 {
@@ -80,14 +19,14 @@ public class ModLoader
     private readonly string dir;
     private Dictionary<string, Mod> mods;
     private List<string>? modLoadOrder;
-    private ManualLogSource? logger { get => SFHRZModLoaderPlugin.Logger; }
+    private ManualLogSource? Logger { get => SFHRZModLoaderPlugin.Logger; }
 
     public ModLoader(string dir)
     {
         this.dir = dir;
         mods = new();
         LoadModLoadOrder();
-        logger?.LogInfo("ModLoader created.");
+        Logger?.LogInfo("ModLoader created.");
     }
 
     public void LoadModLoadOrder()
@@ -102,12 +41,12 @@ public class ModLoader
                     modLoadOrder.Add(line.Trim());
                 }
             }
-            logger?.LogInfo("'mod_load_order.txt' loaded.");
+            Logger?.LogInfo("'mod_load_order.txt' loaded.");
         }
         else
         {
             modLoadOrder = null;
-            logger?.LogInfo("Skipped 'mod_load_order.txt' because it is missing, defaults to load all the mods.");
+            Logger?.LogInfo("Skipped 'mod_load_order.txt' because it is missing, defaults to load all the mods.");
         }
     }
 
@@ -125,14 +64,14 @@ public class ModLoader
         {
             if (ev.data == null || ev.data.GetType() != typeof(GameContext))
             {
-                logger?.LogError("GAMECONTEXT_PATCH data incorrect!");
+                Logger?.LogError("GAMECONTEXT_PATCH data incorrect!");
                 return;
             }
             LoadMods();
             var gctx = (GameContext)ev.data;
-            logger?.LogInfo("Game patching...");
+            Logger?.LogInfo("Game patching...");
             PatchToGameContext(gctx);
-            logger?.LogInfo("Game patch completed.");
+            Logger?.LogInfo("Game patch completed.");
         });
         eventManager.RegisterEventHandler("GAMECONTEXT_LOADED", ev =>
         {
@@ -161,74 +100,101 @@ public class ModLoader
                 });
             }
         });
-        logger?.LogInfo("All ModLoader events registered.");
+        eventManager.RegisterEventHandler("SCRIPT_ENGINE_READY", ev => {
+            LoadModsScripts(SFHRZModLoaderPlugin.ScriptEngine);
+        });
+        Logger?.LogInfo("All ModLoader events registered.");
+    }
+
+    public void LoadMod(string dir, string modId)
+    {
+        try
+        {
+            Logger?.LogInfo($"Loading Mod from directory: {dir}...");
+            if (mods.TryGetValue(modId, out var mod))
+            {
+                this.mods[modId] = Mod.LoadFromDirectory(dir, mod);
+            }
+            else
+            {
+                this.mods.Add(modId, Mod.LoadFromDirectory(dir));
+            }
+            Logger?.LogInfo($"Loading Mod '{modId}' completed.");
+        }
+        catch (Exception e)
+        {
+            Logger?.LogError($"Load Mod in '{dir}' failed: {e}.");
+        }
     }
 
     public void LoadMods()
     {
-        logger?.LogInfo($"Loading Mods from directory: {dir}...");
+        Logger?.LogInfo($"Loading Mods from directory: {dir}...");
         if (!Directory.Exists(dir))
         {
             Directory.CreateDirectory(dir);
         }
-        if (modLoadOrder == null)
-        {
-            foreach (var item in Directory.EnumerateDirectories(dir))
+        var modDirToMetaData = Directory.EnumerateDirectories(dir).Select(modDir => {
+            if(File.Exists(Path.Combine(modDir, "mod.json")))
             {
-                if (File.Exists(Path.Combine(item, "mod.json")))
-                {
-                    var metadata = JsonConvert.DeserializeObject<ModMetadata>(File.ReadAllText(Path.Combine(item, "mod.json")));
-                    try
-                    {
-                        logger?.LogInfo($"Loading Mod from directory: {item}...");
-                        if (mods.TryGetValue(metadata.id, out var mod))
-                        {
-                            this.mods[mod.metadata.id] = Mod.LoadFromDirectory(item, mod);
-                        }
-                        else
-                        {
-                            this.mods.Add(metadata.id, Mod.LoadFromDirectory(item));
-                        }
-                        logger?.LogInfo($"Loading Mod '{metadata.id}' completed.");
-                    }
-                    catch (Exception e)
-                    {
-                        logger?.LogError($"Load Mod in '{item}' failed: {e}.");
-                    }
-                }
+                var metadata = JsonConvert.DeserializeObject<ModMetadata>(File.ReadAllText(Path.Combine(modDir, "mod.json")));
+                return (modDir, metadata);
             }
+            else
+            {
+                return (modDir, (ModMetadata?)null);
+            }
+        }).ToList();
+        var modIdToDir = modLoadOrder?.Select(modId => {
+            return (modId, modDirToMetaData.Find(item => item.Item2?.id == modId).modDir);
+        }).ToList();
+
+        if(modIdToDir != null)
+        {
+            modIdToDir.ForEach(item => {
+                if(item.modDir != null)
+                {
+                    LoadMod(item.modDir, item.modId);
+                }
+            });
         }
         else
         {
-            foreach (var modName in modLoadOrder)
-            {
-                if (File.Exists(Path.Combine(dir, modName, "mod.json")))
+            modDirToMetaData.ForEach(item => {
+                if(item.Item2 != null) 
                 {
-                    var metadata = JsonConvert.DeserializeObject<ModMetadata>(File.ReadAllText(Path.Combine(dir, modName, "mod.json")));
-                    try
-                    {
-                        logger?.LogInfo($"Loading Mod from directory: {Path.Combine(dir, modName)}...");
-                        if (mods.TryGetValue(metadata.id, out var mod))
-                        {
-                            this.mods[mod.metadata.id] = Mod.LoadFromDirectory(Path.Combine(dir, modName), mod);
-                        }
-                        else
-                        {
-                            this.mods.Add(metadata.id, Mod.LoadFromDirectory(Path.Combine(dir, modName)));
-                        }
-                        logger?.LogInfo($"Loading Mod '{metadata.id}' completed.");
-                    }
-                    catch (Exception e)
-                    {
-                        logger?.LogError($"Load Mod in '{Path.Combine(dir, modName)}' failed: {e}.");
-                    }
+                    LoadMod(item.modDir, item.Item2.Value.id);
                 }
-                else
-                {
-                    logger?.LogWarning($"Skipped load Mod '{Path.Combine(dir, modName)}': Not exist.");
-                }
-            }
+            });
         }
+    }
+
+    public void LoadModsScripts(ModScriptEngineWrapper engine)
+    {
+        List<string> scriptEntries = new();
+        mods.ToList().ForEach(item => {
+            try
+            {
+                item.Value.LoadScripts(engine.ModScriptModules).ToList().ForEach(script => {
+                    scriptEntries.Add(script);
+                });
+            } 
+            catch(Exception e)
+            {
+                SFHRZModLoaderPlugin.Logger?.LogError($"Load Mod scripts failed in Mod '{item.Key}': '{e}'.");
+            }
+        });
+        scriptEntries.ForEach(script => {
+            Logger?.LogInfo($"Try import script module: '{script}'.");
+            try
+            {
+                engine.Engine.ImportModule(script);
+            } 
+            catch(Exception e)
+            {
+                SFHRZModLoaderPlugin.Logger?.LogError($"Import Mod script module failed in script '{script}': '{e}'.");
+            }
+        });
     }
 
     public void UnloadMods()

@@ -8,13 +8,11 @@ using UnityEngine;
 
 namespace SFHR_ZModLoader;
 
-
-
 [Serializable]
 public struct ModCamosConf
 {
-    public List<string>? includes;
-    public List<string>? excludes;
+    public string[]? includes;
+    public string[]? excludes;
 }
 
 [Serializable]

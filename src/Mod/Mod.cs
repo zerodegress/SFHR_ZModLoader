@@ -1,6 +1,7 @@
 #nullable enable
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json;
 
 namespace SFHR_ZModLoader;
@@ -9,11 +10,6 @@ public struct Mod
 {
     public ModMetadata metadata;
     public Dictionary<string, ModNamespace> namespaces;
-    public Mod(ModMetadata metadata)
-    {
-        this.metadata = metadata;
-        this.namespaces = new();
-    }
 
     public static Mod LoadFromDirectory(string dir, Mod? mod = null)
     {
@@ -36,11 +32,11 @@ public struct Mod
         {
             if (namespaces.TryGetValue(Path.GetFileName(nsdir), out var ns))
             {
-                namespaces[Path.GetFileName(nsdir)] = ModNamespace.LoadFromDirectory(nsdir, ns);
+                namespaces[Path.GetFileName(nsdir)] = ModNamespace.LoadFromDirectory(nsdir, metadata.id, ns);
             }
             else
             {
-                namespaces.Add(Path.GetFileName(nsdir), ModNamespace.LoadFromDirectory(nsdir));
+                namespaces.Add(Path.GetFileName(nsdir), ModNamespace.LoadFromDirectory(nsdir, metadata.id));
             }
         }
         return new Mod
@@ -48,6 +44,12 @@ public struct Mod
             metadata = metadata,
             namespaces = namespaces,
         };
+    }
+
+    public readonly string[] LoadScripts(ModScriptModules modScriptModules) 
+    {
+        var modId = metadata.id;
+        return namespaces.ToList().Select(item => item.Value.LoadScripts(modId, modScriptModules)).Select(item => item ?? "").Where(item => item != "").ToArray();
     }
 
     public readonly void PatchToGameContext(GameContext gctx)

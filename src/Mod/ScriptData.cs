@@ -1,12 +1,13 @@
 #nullable enable
-
 using System;
-using System.Collections.Generic;
+
+namespace SFHR_ZModLoader;
+
 
 [Serializable]
-public struct ModWeaponsConf
+public struct ModScriptsDataConf
 {
-    public List<string>? includes;
-    public List<string>? excludes;
+    public string? entry;
+    public string[]? includes;
+    public string[]? excludes;
 }
-
