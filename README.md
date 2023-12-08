@@ -49,39 +49,34 @@
 在每一个Mod文件夹之下，都有一定的文件结构来表示Mod，比如：
 
 Mod文件夹
-
-|-sfh
-
-|--camos
-
-|---Red1
-
-|----texture.png
-
-|----icon.png
-
-|----redCamo.png
-
-|--weapons
-
-|----equipTexture.png
-
-|----equipTextureAlt.png
-
-|----menuTexture.png
-
-|----unequipTexture.png
-
-|mod.json
+- (Mod根目录)
+  - sfh
+    - camos
+      - Red1
+        - texture.png
+        - icon.png
+        - redCamo.pn
+    - weapons
+      - equipTexture.png
+      - equipTextureAlt.png
+      - menuTexture.png
+      - unequipTexture.png
+  - mymod
+    - scripts
+      - index.js
+  - mod.json
 
 - `sfh`:所有原版数据和资产都在这个文件夹（你也可以定制你自己的文件夹名，比如说xxddc之类的，但sfh被指定为原版的文件夹，又称**命名空间**）下，更改这个命名空间下的文件说明你将覆盖原版的数据和资产。
 - `camos`:迷彩文件夹，其下每一个文件夹代表一个与之名称相同的迷彩
-- `Red1`:这是原版的“邪恶”迷彩，内部名称为`Red1`
+- `Red1`:这是原版的“邪恶”迷彩，内部名称为`Red1`。你可以将其更换为
 - `texture.png`:这是人物贴图文件
 - `icon.png`:这是人物图标文件
 - `redCamo.png`:这是迷彩层文件
 - `weapons`:武器文件夹，其下每一个文件夹代表一个与之名称相同的武器
-- `weapons`文件夹下每一个贴图代表了武器的某种状态的贴图，目前只能确定`equipTexture.png`是装备在人物身上时显示的贴图。
+- `weapons`文件夹下每一个贴图代表了武器的某种状态的贴图，目前只能确定`equipTexture.png`是装备在人物身上时显示的贴图，其他贴图请自行尝试。
+- `mymod`文件夹是和`sfh`平行的命名空间，其中`mymod`替换为你的mod名称。一般来说，在原版之外新增加的东西应该增加到你专有的mod命名空间当中，比如脚本。
+- `scripts`文件夹是存放脚本的文件夹，所有同命名空间的脚本都放置在此文件夹下。
+- `index.js`是脚本文件的入口，每个命名空间下的`scripts/index.js`都是各自的脚本执行的入口。其余脚本文件只能被引用，不会被执行。
 
 （更多内容正在开发中……）
 
