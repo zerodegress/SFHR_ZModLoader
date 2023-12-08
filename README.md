@@ -94,4 +94,4 @@ Mod文件夹
 
 ## 许可证
 
-GPL-v3
+[**GPL-v3**](./LICENSE)
