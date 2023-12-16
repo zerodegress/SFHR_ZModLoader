@@ -6,9 +6,8 @@ using System.Linq;
 using BepInEx.Logging;
 using Newtonsoft.Json;
 using SFHR_ZModLoader.Scripting;
-using SFHR_ZModLoader.Modding;
 
-namespace SFHR_ZModLoader;
+namespace SFHR_ZModLoader.Modding;
 
 public class ModLoadingException : Exception
 {
@@ -16,17 +15,16 @@ public class ModLoadingException : Exception
     { }
 }
 
-public class ModLoader
+public partial class ModLoader
 {
     private readonly string dir;
-    private Dictionary<string, Mod> mods;
+    private Dictionary<string, Mod> mods = new();
     private List<string>? modLoadOrder;
     private ManualLogSource? Logger { get => SFHRZModLoaderPlugin.Logger; }
 
     public ModLoader(string dir)
     {
         this.dir = dir;
-        mods = new();
         LoadModLoadOrder();
         Logger?.LogInfo("ModLoader created.");
     }
@@ -57,6 +55,7 @@ public class ModLoader
         eventManager.RegisterEventHandler("MODS_LOAD", ev =>
         {
             LoadMods();
+            LoadMod2s();
             eventManager.EmitEvent(new Event
             {
                 type = "MODS_LOADED",
@@ -93,6 +92,7 @@ public class ModLoader
             UnloadMods();
             LoadModLoadOrder();
             LoadMods();
+            LoadMod2s();
             if (SFHRZModLoaderPlugin.GameContext != null)
             {
                 eventManager.EmitEvent(new Event
@@ -102,8 +102,9 @@ public class ModLoader
                 });
             }
         });
-        eventManager.RegisterEventHandler("SCRIPT_ENGINE_READY", ev => {
-            LoadModsScripts(SFHRZModLoaderPlugin.ScriptEngine);
+        eventManager.RegisterEventHandler("SCRIPT_ENGINE_READY", ev =>
+        {
+            // LoadModsScripts(SFHRZModLoaderPlugin.ScriptEngine);
         });
         Logger?.LogInfo("All ModLoader events registered.");
     }
@@ -136,8 +137,9 @@ public class ModLoader
         {
             Directory.CreateDirectory(dir);
         }
-        var modDirToMetaData = Directory.EnumerateDirectories(dir).Select(modDir => {
-            if(File.Exists(Path.Combine(modDir, "mod.json")))
+        var modDirToMetaData = Directory.EnumerateDirectories(dir).Select(modDir =>
+        {
+            if (File.Exists(Path.Combine(modDir, "mod.json")))
             {
                 var metadata = JsonConvert.DeserializeObject<ModMetadata>(File.ReadAllText(Path.Combine(modDir, "mod.json")));
                 return (modDir, metadata);
@@ -147,14 +149,16 @@ public class ModLoader
                 return (modDir, (ModMetadata?)null);
             }
         }).ToList();
-        var modIdToDir = modLoadOrder?.Select(modId => {
+        var modIdToDir = modLoadOrder?.Select(modId =>
+        {
             return (modId, modDirToMetaData.Find(item => item.Item2?.id == modId).modDir);
         }).ToList();
 
-        if(modIdToDir != null)
+        if (modIdToDir != null)
         {
-            modIdToDir.ForEach(item => {
-                if(item.modDir != null)
+            modIdToDir.ForEach(item =>
+            {
+                if (item.modDir != null)
                 {
                     LoadMod(item.modDir, item.modId);
                 }
@@ -162,8 +166,9 @@ public class ModLoader
         }
         else
         {
-            modDirToMetaData.ForEach(item => {
-                if(item.Item2 != null) 
+            modDirToMetaData.ForEach(item =>
+            {
+                if (item.Item2 != null)
                 {
                     LoadMod(item.modDir, item.Item2.Value.id);
                 }
@@ -171,33 +176,36 @@ public class ModLoader
         }
     }
 
-    public void LoadModsScripts(ModScriptEngineWrapper engine)
-    {
-        List<string> scriptEntries = new();
-        mods.ToList().ForEach(item => {
-            try
-            {
-                item.Value.LoadScripts(engine.ModScriptModules).ToList().ForEach(script => {
-                    scriptEntries.Add(script);
-                });
-            } 
-            catch(Exception e)
-            {
-                SFHRZModLoaderPlugin.Logger?.LogError($"Load Mod scripts failed in Mod '{item.Key}': '{e}'.");
-            }
-        });
-        scriptEntries.ForEach(script => {
-            Logger?.LogInfo($"Try import script module: '{script}'.");
-            try
-            {
-                engine.Engine.ImportModule(script);
-            } 
-            catch(Exception e)
-            {
-                SFHRZModLoaderPlugin.Logger?.LogError($"Import Mod script module failed in script '{script}': '{e}'.");
-            }
-        });
-    }
+    // public void LoadModsScripts(ModScriptEngineWrapper engine)
+    // {
+    //     List<string> scriptEntries = new();
+    //     mods.ToList().ForEach(item =>
+    //     {
+    //         try
+    //         {
+    //             item.Value.LoadScripts(engine.ModScriptModules).ToList().ForEach(script =>
+    //             {
+    //                 scriptEntries.Add(script);
+    //             });
+    //         }
+    //         catch (Exception e)
+    //         {
+    //             SFHRZModLoaderPlugin.Logger?.LogError($"Load Mod scripts failed in Mod '{item.Key}': '{e}'.");
+    //         }
+    //     });
+    //     scriptEntries.ForEach(script =>
+    //     {
+    //         Logger?.LogInfo($"Try import script module: '{script}'.");
+    //         try
+    //         {
+    //             engine.Engine.ImportModule(script);
+    //         }
+    //         catch (Exception e)
+    //         {
+    //             SFHRZModLoaderPlugin.Logger?.LogError($"Import Mod script module failed in script '{script}': '{e}'.");
+    //         }
+    //     });
+    // }
 
     public void UnloadMods()
     {

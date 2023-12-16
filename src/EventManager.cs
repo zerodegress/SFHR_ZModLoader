@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using BepInEx.Logging;
+using Cpp2IL.Core.Extensions;
 
 namespace SFHR_ZModLoader
 {
@@ -13,7 +14,7 @@ namespace SFHR_ZModLoader
 
     public class EventManager
     {
-        private readonly Dictionary<string, Action<Event>> eventHandlers;
+        private readonly Dictionary<string, Dictionary<string, Action<Event>>> eventHandlers;
         private readonly ManualLogSource logger;
 
         public EventManager(ManualLogSource logger)
@@ -25,33 +26,38 @@ namespace SFHR_ZModLoader
         public void EmitEvent(Event ev)
         {
             logger.LogInfo($"Event: {ev.type}");
-            foreach(var handler in eventHandlers)
+            if (eventHandlers.TryGetValue(ev.type, out var handlers))
             {
-                if(handler.Key == ev.type)
+                foreach (var handler in handlers.Clone())
                 {
-                    handler.Value(ev);
+                    handler.Value.Invoke(ev);
                 }
             }
         }
 
-        public void RegisterEventHandler(string type, Action<Event> handler, string? handlerId = null)
+        public string RegisterEventHandler(string type, Action<Event> handler, string? handlerId = null)
         {
-            if(eventHandlers.TryGetValue(type, out var curHandler))
+            Dictionary<string, Action<Event>> handlers;
+            if (eventHandlers.TryGetValue(type, out var _handlers))
             {
-                eventHandlers[type] = ev => {
-                    curHandler(ev);
-                    handler(ev);
-                };
+                handlers = _handlers;
             }
             else
             {
-                eventHandlers[type] = handler;
+                eventHandlers.Add(type, new());
+                handlers = eventHandlers[type];
             }
+            var id = handlerId ?? Guid.NewGuid().ToString();
+            handlers.Add(id, handler);
+            return id;
         }
 
-        public void ClearEventHandler(string type)
+        public void UnregisterEventHandler(string type, string handlerId)
         {
-            eventHandlers.Remove(type);
+            if (eventHandlers.TryGetValue(type, out var handlers))
+            {
+                handlers.Remove(handlerId);
+            }
         }
     }
 }

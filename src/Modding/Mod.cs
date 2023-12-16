@@ -47,12 +47,6 @@ public struct Mod
         };
     }
 
-    public readonly string[] LoadScripts(ModScriptModules modScriptModules) 
-    {
-        var modId = metadata.id;
-        return namespaces.ToList().Select(item => item.Value.LoadScripts(modId, modScriptModules)).Select(item => item ?? "").Where(item => item != "").ToArray();
-    }
-
     public readonly void PatchToGameContext(GameContext gctx)
     {
         foreach (var item in namespaces)

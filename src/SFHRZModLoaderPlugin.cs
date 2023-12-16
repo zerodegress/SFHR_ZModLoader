@@ -5,8 +5,8 @@ using BepInEx.Unity.IL2CPP;
 using BepInEx.Logging;
 using HarmonyLib;
 using Il2CppInterop.Runtime.Injection;
-using Jint;
 using SFHR_ZModLoader.Scripting;
+using SFHR_ZModLoader.Modding;
 
 namespace SFHR_ZModLoader;
 
@@ -21,7 +21,6 @@ public class SFHRZModLoaderPlugin : BasePlugin
     public static ModLoader? ModLoader { get; set; }
     public static GameContext? GameContext { get; set; }
     public static EventManager? EventManager { get; set; }
-    public static ModScriptEngineWrapper ScriptEngine { get; set; } = new();
     public static bool DebugEmit { get; set; } = true;
 
     public override void Load()
@@ -32,7 +31,8 @@ public class SFHRZModLoaderPlugin : BasePlugin
 
         if (DebugEmit)
         {
-            if(!Directory.Exists(Path.Combine(Paths.GameRootPath, "DebugEmit"))) {
+            if (!Directory.Exists(Path.Combine(Paths.GameRootPath, "DebugEmit")))
+            {
                 Directory.CreateDirectory(Path.Combine(Paths.GameRootPath, "DebugEmit"));
             }
         }
@@ -42,35 +42,37 @@ public class SFHRZModLoaderPlugin : BasePlugin
         ClassInjector.RegisterTypeInIl2Cpp<InputMonitor>();
 
         ZeroComponents = UnityEngine.GameObject.Find(ZERO_COMPONENTS_NAME);
-        if(ZeroComponents == null) 
+        if (ZeroComponents == null)
         {
             ZeroComponents = new UnityEngine.GameObject(ZERO_COMPONENTS_NAME);
             UnityEngine.GameObject.DontDestroyOnLoad(ZeroComponents);
             ZeroComponents.hideFlags = UnityEngine.HideFlags.HideAndDontSave;
         }
         InputMonitor = ZeroComponents.GetComponent<InputMonitor>();
-        if(InputMonitor == null)
+        if (InputMonitor == null)
         {
             InputMonitor = ZeroComponents.AddComponent<InputMonitor>();
         }
 
         ModLoader = new ModLoader(Path.Combine(Paths.GameRootPath, "mods"));
         ModLoader.RegisterEvents(EventManager);
-        EventManager.EmitEvent(new Event {
+        EventManager.EmitEvent(new Event
+        {
             type = "MODS_LOAD"
         });
-        InputMonitor.SetAction(UnityEngine.KeyCode.P, () => {
-            if(GameContext == null)
+        InputMonitor.SetAction(UnityEngine.KeyCode.P, () =>
+        {
+            if (GameContext == null)
             {
                 return;
             }
-            EventManager.EmitEvent(new Event {
+            EventManager.EmitEvent(new Event
+            {
                 type = "MODS_RELOAD"
             });
         });
-        ScriptEngine.Engine.SetValue("console", new ScriptObjectConsole(Logger));
-        ScriptEngine.Engine.SetValue("EventManager", EventManager);
-        EventManager.EmitEvent(new Event {
+        EventManager.EmitEvent(new Event
+        {
             type = "SCRIPT_ENGINE_READY"
         });
         Harmony.CreateAndPatchAll(typeof(Hooks));

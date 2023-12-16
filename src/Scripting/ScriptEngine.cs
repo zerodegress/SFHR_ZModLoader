@@ -13,7 +13,8 @@ public class ModScriptEngineWrapper
 
     public ModScriptEngineWrapper()
     {
-        Engine = new(options => {
+        Engine = new(options =>
+        {
             options.AllowClr(typeof(GlobalData).Assembly)
                 .EnableModules(ModScriptModuleLoader);
         });

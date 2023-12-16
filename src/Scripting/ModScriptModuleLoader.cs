@@ -3,70 +3,84 @@ using System;
 using System.Collections.Generic;
 using Esprima;
 using Esprima.Ast;
+using Il2CppSystem.IO;
 using Jint;
 using Jint.Runtime.Modules;
 
 namespace SFHR_ZModLoader.Scripting;
 
-public class ModScriptModules 
+public class ModScriptModules
 {
-    private Dictionary<string, Dictionary<string, Dictionary<string, string>>> moduleSourceDict = new();
+    private Dictionary<string, string> modDirectoryMap = new();
 
-    public void AddModule(string modId, string nsname, string path, string source)
+    public void AddModDirectory(string modId, string modDirectory)
     {
-        if(!moduleSourceDict.ContainsKey(modId))
-        {
-            moduleSourceDict.Add(modId, new());
-        }
-        var modDict = moduleSourceDict[modId];
-        if(!modDict.ContainsKey(nsname))
-        {
-            modDict.Add(nsname, new());
-        }
-        var nsDict = modDict[nsname];
-        nsDict.Add(path, source);
+        modDirectoryMap.Remove(modId);
+        modDirectoryMap.Add(modId, modDirectory);
     }
 
     public string GetModuleSource(Uri uri)
     {
-        switch(uri.Scheme)
+        if (uri.Scheme != "mod")
         {
-            case "mod":
+            throw new Exception($"Not mod scheme: '{uri.Scheme}'.");
+        }
+        if (modDirectoryMap.TryGetValue(uri.Authority, out var directory))
+        {
+            var scriptPath = Path.Combine(directory, uri.LocalPath.TrimStart('/'));
+            if (!Path.GetFullPath(scriptPath).StartsWith(Path.GetFullPath(directory)))
             {
-                if(moduleSourceDict.TryGetValue(uri.Host, out var modDict))
+                throw new Exception($"Mod '{uri.Authority}' script module should be in its mod directory: '{uri}'.");
+            }
+            if (File.Exists(scriptPath))
+            {
+                try
                 {
-                    if(uri.Segments.Length >= 3)
-                    {
-                        var nsname = uri.Segments[1].TrimEnd('/');
-                        var path = string.Join("", uri.Segments, 2, uri.Segments.Length - 2).TrimEnd('/');
-                        if(modDict.TryGetValue(nsname, out var nsDict))
-                        {
-                            if(nsDict.TryGetValue(path, out var source))
-                            {
-                                return source;
-                            }
-                            else
-                            {
-                                throw new Exception($"Unknown path in namespace '{nsname}': {path}");
-                            }
-                        }
-                        else
-                        {
-                            throw new Exception($"Unknown namespace in Mod '{uri.Host}': '{nsname}'.");
-                        }
-                    }
-                    else
-                    {
-                        throw new Exception($"Path segments missing: '{uri.AbsolutePath}'.");
-                    }
+                    return File.ReadAllText(scriptPath);
                 }
-                else
+                catch (Exception e)
                 {
-                    throw new Exception($"Unknown Mod ID: '{uri.Host}'.");
+                    throw new Exception($"Error while reading script file: '{Path.Combine(directory, uri.LocalPath)}': {e}.");
                 }
             }
-            default:
-                throw new Exception($"Unknown schema: '{uri.Scheme}'.");
+            else
+            {
+                throw new Exception($"Script file not found: '{Path.Combine(directory, uri.LocalPath)}'.");
+            }
+        }
+        else
+        {
+            throw new Exception($"Mod not found: '{uri.Authority}'.");
+        }
+    }
+
+    public byte[] GetModFileBytes(Uri uri)
+    {
+        if (uri.Scheme != "modfile")
+        {
+            throw new Exception($"Not file scheme: '{uri.Scheme}'.");
+        }
+        if (modDirectoryMap.TryGetValue(uri.Authority, out var directory))
+        {
+            if (File.Exists(Path.Combine(directory, uri.LocalPath)))
+            {
+                try
+                {
+                    return File.ReadAllBytes(Path.Combine(directory, uri.LocalPath));
+                }
+                catch (Exception e)
+                {
+                    throw new Exception($"Error while reading file: '{Path.Combine(directory, uri.LocalPath)}': {e}.");
+                }
+            }
+            else
+            {
+                throw new Exception($"File not found: '{Path.Combine(directory, uri.LocalPath)}'.");
+            }
+        }
+        else
+        {
+            throw new Exception($"Mod not found: '{uri.Authority}'.");
         }
     }
 }
@@ -92,7 +106,19 @@ public class ModScriptModuleLoader : IModuleLoader
         }
 
         var realUri = new Uri($"{resolved.Uri.Segments[1].TrimEnd('/')}://{resolved.Uri.Segments[2].TrimEnd('/')}/{string.Join("", resolved.Uri.Segments, 3, resolved.Uri.Segments.Length - 3).TrimEnd('/')}");
-        string code = ModScriptModules.GetModuleSource(realUri);
+        string code;
+        // SFHRZModLoaderPlugin.Logger?.LogWarning(realUri);
+        switch (realUri.Scheme)
+        {
+            case "mod":
+                code = ModScriptModules.GetModuleSource(realUri);
+                break;
+            case "modfile":
+                // TODO: 完成文件加载部分
+                throw new Exception($"Unsupported scheme: {realUri.Scheme}");
+            default:
+                throw new Exception($"Unknown scheme: {realUri.Scheme}");
+        }
         string path = resolved.Uri.ToString();
         try
         {
@@ -126,7 +152,7 @@ public class ModScriptModuleLoader : IModuleLoader
         }
         else if (IsRelative(specifier))
         {
-            if(referencingModuleLocation == null)
+            if (referencingModuleLocation == null)
             {
                 throw new Exception($"No base module location for '{specifier}'");
             }
