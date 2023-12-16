@@ -10,17 +10,20 @@ namespace SFHR_ZModLoader
 {
     public class GameContext
     {
-        public GlobalData GlobalData { get; }
+        public GlobalData? GlobalData { get => GI.GlobalData; }
         public ManualLogSource Logger { get; }
 
-        public GameContext(GlobalData gd, ManualLogSource logger)
+        public GameContext(ManualLogSource logger)
         {
-            GlobalData = gd;
             Logger = logger;
         }
 
         public void PatchCamoData(string name, Action<CamoData> patcher)
         {
+            if(GlobalData == null) {
+                Logger.LogWarning($"GameContext: Patch CamoData failed: GlobalData not loaded.");
+                return;
+            }
             Logger.LogInfo($"GameContext: Patching CamoData '{name}'...");
             var obj = GlobalData.GetItem(name, GI.EItemType.Camo);
             if(obj == null)
@@ -34,15 +37,18 @@ namespace SFHR_ZModLoader
                 patcher(camoData);
                 Logger.LogInfo($"GameContext: Patch CamoData '{name}' completed.");
             }
-            catch
+            catch(Exception e)
             {
-                Logger.LogError($"The type is {obj.GetType().Name}");
-                Logger.LogError($"GameContext: Patch CamoData '{name}' failed.");
+                Logger.LogWarning($"GameContext: Patch CamoData '{name}' failed: '{e}'.");
             }
         }
 
         public void PatchWeaponData(string name, Action<WeaponData> patcher)
         {
+            if(GlobalData == null) {
+                Logger.LogWarning($"GameContext: Patch WeaponData failed: GlobalData not loaded.");
+                return;
+            }
             Logger.LogInfo($"GameContext: Patching WeaponData '{name}'...");
             var obj = GlobalData.GetItem(name, GI.EItemType.All);
             if(obj == null)
@@ -58,12 +64,16 @@ namespace SFHR_ZModLoader
             }
             catch(Exception e)
             {
-                Logger.LogError($"GameContext: Patch WeaponData '{name}' error: '{e}'.");
+                Logger.LogWarning($"GameContext: Patch WeaponData '{name}' error: '{e}'.");
             }
         }
         
         public void InsertTexture(string name, Texture2D newTexture)
         {
+            if(GlobalData == null) {
+                Logger.LogWarning($"GameContext: Insert Texture failed: GlobalData not loaded.");
+                return;
+            }
             Logger.LogInfo($"GameContext: Inserting Texture '{name}'...");
             GlobalData.Textures.Add(name, newTexture);
             Logger.LogInfo($"GameContext: Insert Texture '{name}' completed.");
@@ -71,6 +81,10 @@ namespace SFHR_ZModLoader
 
         public void PatchTexture(string name, Action<Texture2D> patcher, bool fallbackInsert = false)
         {
+            if(GlobalData == null) {
+                Logger.LogWarning($"GameContext: Patch Texture failed: GlobalData not loaded.");
+                return;
+            }
             Logger.LogInfo($"GameContext: Patching texture '{name}'...");
             if (GlobalData.Textures.ContainsKey(name))
             {
@@ -102,6 +116,10 @@ namespace SFHR_ZModLoader
 
         public void InsertSound(string name, AudioClip newSound)
         {
+            if(GlobalData == null) {
+                Logger.LogWarning($"GameContext: Insert sound failed: GlobalData not loaded.");
+                return;
+            }
             Logger.LogInfo($"GameContext: Inserting sound '{name}'...");
             GlobalData.Sounds.Add(name, newSound);
             Logger.LogInfo($"GameContext: Insert sound '{name}' completed.");
@@ -109,6 +127,10 @@ namespace SFHR_ZModLoader
 
         public void InsertSong(string name, AudioClip newSong)
         {
+            if(GlobalData == null) {
+                Logger.LogWarning($"GameContext: Insert song failed: GlobalData not loaded.");
+                return;
+            }
             Logger.LogInfo($"GameContext: Inserting sound '{name}'...");
             GlobalData.Songs.Add(name, newSong);
             Logger.LogInfo($"GameContext: Insert sound '{name}' completed.");

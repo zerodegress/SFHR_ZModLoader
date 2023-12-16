@@ -28,7 +28,7 @@ namespace SFHR_ZModLoader
             if (Logger != null && !isGameContextLoaded)
             {
                 isGameContextLoaded = true;
-                SFHRZModLoaderPlugin.GameContext = new(globalData, Logger);
+                SFHRZModLoaderPlugin.GameContext = new(Logger);
                 EventManager?.EmitEvent(new Event
                 {
                     type = "GAMECONTEXT_LOADED",
